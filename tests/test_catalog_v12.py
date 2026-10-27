@@ -47,12 +47,14 @@ class CatalogV12Tests(unittest.TestCase):
     def test_initialize_creates_related_tables_without_erasing_jobs(self):
         record=new_record([("SKU.jpg",b"fake",{})],fingerprint="a"*64,platform="天猫",template="蓝白")
         save_job(self.db,record)
+        with open_database(self.db) as con:
+            base_version = con.execute("PRAGMA user_version").fetchone()[0]
         initialize_catalog(self.db)
         initialize_catalog(self.db)
         self.assertEqual(catalog_summary(self.db)["counts"]["stores"],0)
         with open_database(self.db) as con:
             self.assertEqual(con.execute("SELECT count(*) FROM jobs").fetchone()[0],1)
-            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0],1)  # V9 fixture
+            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0],base_version)
 
     def test_import_relations_and_idempotency(self):
         report=import_catalog_csv(self.db,rows_bytes(sample()),dry_run=False)
