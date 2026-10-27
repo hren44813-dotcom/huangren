@@ -19,6 +19,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from download_guard import download_image_url, decode_image_base64
 from typing import Any
 
 
@@ -225,15 +226,13 @@ def http_get(url: str, api_key: str, timeout: int = 30) -> dict[str, Any]:
 def save_image(item: dict[str, Any], output_dir: Path, index: int) -> Path:
     if item.get("b64_json") or item.get("base64") or item.get("image_base64"):
         encoded = item.get("b64_json") or item.get("base64") or item.get("image_base64")
-        bytes_data = base64.b64decode(encoded)
+        bytes_data = decode_image_base64(encoded)
         ext = "png"
     elif item.get("url"):
         image_url = item["url"]
         suffix = Path(urllib.parse.urlparse(image_url).path).suffix.lower().lstrip(".") or "png"
         ext = "jpg" if suffix == "jpeg" else suffix
-        req = urllib.request.Request(image_url, headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            bytes_data = resp.read()
+        bytes_data = download_image_url(image_url)
     else:
         fail(f"图片结果缺少 url 或 b64_json：{item}")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -253,7 +252,7 @@ def save_sync_images(result: dict[str, Any], output_dir: Path, fmt: str) -> list
         if item.get("b64_json"):
             encoded = item["b64_json"]
             try:
-                image_bytes = base64.b64decode(encoded)
+                image_bytes = decode_image_base64(encoded)
             except (binascii.Error, ValueError) as exc:
                 fail(f"无法解码 b64_json：{exc}")
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -261,11 +260,10 @@ def save_sync_images(result: dict[str, Any], output_dir: Path, fmt: str) -> list
             path.write_bytes(image_bytes)
             paths.append(path)
         elif item.get("url"):
-            req = urllib.request.Request(item["url"], headers={"User-Agent": UA})
+            image_bytes = download_image_url(item["url"])
             output_dir.mkdir(parents=True, exist_ok=True)
             path = output_dir / f"image-{time.strftime('%Y%m%d-%H%M%S')}-{index:02d}.{fmt}"
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                path.write_bytes(resp.read())
+            path.write_bytes(image_bytes)
             paths.append(path)
         else:
             fail("图片结果缺少 url 或 b64_json。")
@@ -333,11 +331,10 @@ def run_async(endpoint: str, api_key: str, payload: dict[str, Any], output_dir: 
         url_list = img_item.get("url")
         if not isinstance(url_list, list) or not url_list:
             fail("任务结果缺少 url 列表。")
-        req = urllib.request.Request(url_list[0], headers={"User-Agent": UA})
+        image_bytes = download_image_url(url_list[0])
         output_dir.mkdir(parents=True, exist_ok=True)
         path = output_dir / f"image-{time.strftime('%Y%m%d-%H%M%S')}-{index:02d}.{fmt}"
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            path.write_bytes(resp.read())
+        path.write_bytes(image_bytes)
         paths.append(path)
     return paths
 

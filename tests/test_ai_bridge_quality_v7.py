@@ -38,6 +38,14 @@ class AiBridgeQualityV7(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(result)) as z:
             self.assertEqual(z.namelist(), ["xinghe_01.png"])
 
+    def test_provider_jpeg_saved_with_correct_extension(self):
+        image = io.BytesIO()
+        Image.new("RGB", (160, 120), "white").save(image, format="JPEG")
+        # Fake provider writes it with a PNG filename; output must match bytes.
+        result = self.execute([image.getvalue()])
+        with zipfile.ZipFile(io.BytesIO(result)) as z:
+            self.assertEqual(z.namelist(), ["xinghe_01.jpg"])
+
     def test_corrupt_provider_image_is_rejected(self):
         with self.assertRaisesRegex(RuntimeError, "不合格"):
             self.execute([b"not a png"])

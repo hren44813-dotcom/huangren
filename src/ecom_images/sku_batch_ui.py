@@ -117,6 +117,8 @@ def render(st, platform: str) -> None:
         st.success(f"本次完成：{result.successes} 个 SKU 成功，{result.failures} 行未成功") if result.successes else st.warning("本次没有生成成功的图片，请查看每行失败原因")
         st.dataframe(result.rows, hide_index=True, use_container_width=True)
         st.caption("机器通过仅代表像素、格式等检查通过。图片孔位、材质、标注数字真实性及平台实时审核规则仍需人工检查。")
+        if any(meta.get("dimension_source") for _, _, meta in result.images):
+            st.warning("尺寸图清晰度提醒：小字号数字经等比缩放可能难以阅读。请在手机预览中逐一检查原尺寸标注；当前自动质检无法判断文字是否易读。")
         st.download_button("📦 下载内部制图包（未经人工审核，不可直接发布）", result.zip_bytes(),
                            file_name="sku_excel_批量图片及校验报告.zip", mime="application/zip", use_container_width=True)
         if result.images:

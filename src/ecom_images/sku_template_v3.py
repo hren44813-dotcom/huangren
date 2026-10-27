@@ -94,4 +94,5 @@ def render_sku_template(product: UploadedPicture, *, drawing: UploadedPicture | 
                  "source_name": product.name, "dimension_source": drawing.name if drawing else None,
                  "product_preserved": "仅等比例缩放；原照片像素经 JPEG 编码，需人工核对",
                  "annotation_policy": "原尺寸图作为完整图片等比缩放；不重新绘制引线或数字",
+                 "dimension_text_legibility": "包含尺寸图：缩放后的细小标注可能无法在手机端辨认，必须人工核对" if drawing else "不包含独立尺寸图",
                  "manual_review_required": True}

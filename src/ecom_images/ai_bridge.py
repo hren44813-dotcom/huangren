@@ -9,6 +9,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from PIL import Image
+
 from .workflow import UploadedPicture, validate_upload
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -80,9 +82,14 @@ def generate_xinghe(
                 validate_upload(UploadedPicture(item.name, content))
             except ValueError as exc:
                 raise RuntimeError(f"接口返回图片不合格：{item.name}：{exc}") from exc
-            validated.append((item, content))
+            # 服务商偶尔返回 JPG 字节却使用 PNG 文件名；以实际文件内容确定后缀。
+            with Image.open(io.BytesIO(content)) as verified:
+                suffix = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}.get(verified.format)
+            if suffix is None:
+                raise RuntimeError("服务商图片格式不受支持")
+            validated.append((suffix, content))
         stream = io.BytesIO()
         with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for index, (item, content) in enumerate(validated, 1):
-                zip_file.writestr(f"xinghe_{index:02d}{item.suffix.lower()}", content)
+            for index, (suffix, content) in enumerate(validated, 1):
+                zip_file.writestr(f"xinghe_{index:02d}{suffix}", content)
         return stream.getvalue()

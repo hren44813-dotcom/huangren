@@ -198,5 +198,6 @@ def render_custom_sku(
         "background_source": clean_template.name if clean_template else None,
         "product_preserved": "原图仅裁透明外边距、等比例缩放和JPEG编码；无结构重绘",
         "annotation_policy": "尺寸图原样等比放入指定区域，不重新绘制标注",
+        "dimension_text_legibility": "包含尺寸图：缩放后的细小标注可能无法在手机端辨认，必须人工核对" if drawing else "不包含独立尺寸图",
         "manual_review_required": True,
     }
