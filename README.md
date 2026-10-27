@@ -14,6 +14,22 @@
 | `sku` | 1440×1440 | 彩色标题+原产品/原尺寸图+用户填写的参数区 |
 | `detail` | 800×1600 | 800px 宽单页详情模块；可增加多项真实卖点 |
 
+
+## 🖥 中文可视化界面（运营助理优先使用）
+
+除命令行外，本仓库已新增基于 Streamlit 的中文操作面板，无需改 JSON 就能上传多张实物图、选择淘宝/天猫或阿里国际站、选择主图/白底图/SKU/竖图/详情模块、填写真实文案、自动批量排版并下载 ZIP 和校验报告。
+
+```bash
+python -m pip install -r requirements-ui.txt
+python -m streamlit run app.py
+```
+
+浏览器按终端提示访问本地界面（通常为 `http://localhost:8501`）。
+
+面板第二页接入已安装的**星河跨境电商详情技能**，可在显式同意后调用第三方 AI 服务。需要自行提供有效 API Key，可能收费；真实图片与提示词会发送给第三方，不保证 AI 输出机械结构绝对一致。
+
+详细操作说明见 [docs/web-ui.md](docs/web-ui.md)。
+
 ## 立即运行
 
 先安装 Python 3.10+，然后在项目根目录：
@@ -40,6 +56,8 @@ python scripts/build_images.py --config configs/example.json --report output/rep
 ```text
 huangren/
 ├── README.md
+├── app.py                # 中文 Streamlit 界面
+├── requirements-ui.txt   # 界面额外依赖
 ├── requirements.txt
 ├── .gitignore
 ├── configs/

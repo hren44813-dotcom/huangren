@@ -26,3 +26,6 @@ assets/input/DEMO_only.png
 # 星河技能生成目录和密钥
 generated-images/
 *.secret
+
+# Streamlit private settings
+.streamlit/secrets.toml
