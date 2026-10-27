@@ -71,3 +71,12 @@ python -m unittest discover -s tests -v
 ```
 
 更多参数和注意事项见 [docs/usage.md](docs/usage.md)。
+
+
+## 跨境电商详情 AI 技能（星河 4.0）
+
+已安装用户上传的 **星河跨境电商详情4.0** 技能到 Codex 仓库级技能目录：`.agents/skills/xinghe-crossborder-detail-3/SKILL.md`。内含 20 篇参考规范、脚本、可选第三方 API 示例配置与使用说明。该 Skill 专注于跨境详情模块独立 AI 生图；上面介绍的本地 Pillow 排版工具继续负责淘宝/天猫主图、SKU 和白底素材。这是两种不同工作流程。
+
+技能指令可以在仓库中被兼容的 Codex 智能体发现，但**不会仅因提交 GitHub 就自动连接 ChatGPT 或启动生成**。要实际通过星河接口生图，需要自行配置第三方 API 密钥；不得把 `.env` 或客户敏感图上传到公共仓库。
+
+完整操作方法和命令见 [星河技能使用说明](docs/xinghe-skill.md)。

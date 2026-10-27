@@ -22,3 +22,7 @@ outputs/
 *.bak
 # Generated demo image (users can regenerate)
 assets/input/DEMO_only.png
+
+# 星河技能生成目录和密钥
+generated-images/
+*.secret

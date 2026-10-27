@@ -1,0 +1,6 @@
+interface:
+  display_name: "星河跨境电商详情4.0"
+  short_description: "Generate buyer-demand-led cross-border ecommerce detail images from product photos, references, and platform sizes."
+  default_prompt: "Use $xinghe-crossborder-detail-3 to generate cross-border ecommerce detail images from my product photos."
+policy:
+  allow_implicit_invocation: true
