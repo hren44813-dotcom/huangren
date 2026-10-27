@@ -455,7 +455,7 @@ def delete_template(path: str | Path, name: str) -> None:
 
 
 def migrate_legacy(path: str | Path, *, job_directory: str | Path, template_directory: str | Path,
-                   dry_run: bool = False) -> dict[str, Any]:
+                   dry_run: bool = False, _dry_run_scratch: bool = False) -> dict[str, Any]:
     """Import legacy JSON with per-file atomic transactions; never delete source files.
 
     A changed imported JSON is a conflict, not an automatic overwrite. This is
@@ -464,13 +464,23 @@ def migrate_legacy(path: str | Path, *, job_directory: str | Path, template_dire
     creates the target database or modifies source files.
     """
     target = _check_path(path)
-    if dry_run and not target.exists():
+    if dry_run and not _dry_run_scratch:
+        # Always run previews against a temporary copy. Opening a production
+        # V1 database normally performs schema migration, which a dry-run must not do.
         with tempfile.TemporaryDirectory(prefix="huangren-db-dryrun-") as tempdir:
             scratch = Path(tempdir) / "dryrun.sqlite3"
-            with open_database(scratch):
-                pass
+            if target.is_file():
+                with closing(sqlite3.connect(str(target))) as source_conn:
+                    with closing(sqlite3.connect(str(scratch))) as scratch_conn:
+                        source_conn.backup(scratch_conn)
+                with open_database(scratch):
+                    pass
+            else:
+                with open_database(scratch):
+                    pass
             return migrate_legacy(scratch, job_directory=job_directory,
-                                  template_directory=template_directory, dry_run=True)
+                                  template_directory=template_directory, dry_run=True,
+                                  _dry_run_scratch=True)
     report: dict[str, Any] = {"jobs_imported": 0, "templates_imported": 0, "unchanged": 0,
                               "would_import": 0, "dry_run": dry_run, "errors": []}
     for kind, folder in (("job", Path(job_directory)), ("template", Path(template_directory))):

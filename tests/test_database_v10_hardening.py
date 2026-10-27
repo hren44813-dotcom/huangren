@@ -84,6 +84,23 @@ class DatabaseV10HardeningTests(unittest.TestCase):
     def test_health_check_missing_path_is_read_only(self):
         path=self.root/"missing.sqlite3"; self.assertFalse(integrity_report(path)["ok"]); self.assertFalse(path.exists())
 
+    def test_dry_run_does_not_migrate_existing_v1_database(self):
+        save_job(self.db, self.record)
+        with open_database(self.db) as conn:
+            conn.execute("DROP TRIGGER review_events_no_update")
+            conn.execute("DROP TRIGGER review_events_no_delete")
+            conn.execute("PRAGMA user_version=1")
+        jobs = self.root / "legacy_jobs"
+        templates = self.root / "legacy_templates"
+        jobs.mkdir(); templates.mkdir()
+        old = new_record([("OLD.jpg", b"legacy", {})], fingerprint="d"*64, platform="天猫", template="蓝白")
+        save_record(jobs, old)
+        result = migrate_legacy(self.db, job_directory=jobs, template_directory=templates, dry_run=True)
+        self.assertEqual(result["would_import"], 1)
+        with sqlite3.connect(self.db) as conn:
+            self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 1)
+            self.assertEqual(conn.execute("SELECT count(*) FROM jobs").fetchone()[0], 1)
+
 class DatabaseV10CliTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
