@@ -1,0 +1,27 @@
+# 私密配置及凭证
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 系统及编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# 缓存、依赖与构建输出
+__pycache__/
+*.py[cod]
+node_modules/
+dist/
+build/
+.coverage
+.pytest_cache/
+
+# 日志及临时文件
+*.log
+*.tmp
+*.bak
