@@ -1,0 +1,69 @@
+{
+  "version": "14.0",
+  "scope": "只定位原始制造商画册中的型号字符串；不证明具体规格、材质、扭矩或实物一致性",
+  "sources": [
+    {
+      "source_id": "huicheng_catalog_2026_10_unfingerprinted",
+      "title": "汇成五金画册(1).pdf",
+      "source_type": "manufacturer_catalog",
+      "locator": "用户文件库，195页，原文件SHA256尚未读取；禁止据此将技术参数设为已验证",
+      "sha256": null
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "catalog_ms731_1_p60",
+      "history_id": "H-84d8bbffbd60a6c7f73a",
+      "field": "model_exists",
+      "value": "MS731-1",
+      "source_id": "huicheng_catalog_2026_10_unfingerprinted",
+      "page": 60,
+      "excerpt": "PDF第60页型号目录中出现 MS731-1 字样"
+    },
+    {
+      "claim_id": "catalog_ms828_1g_p60",
+      "history_id": "H-4df92cc11e99dc031f8f",
+      "field": "model_exists",
+      "value": "MS828-1G",
+      "source_id": "huicheng_catalog_2026_10_unfingerprinted",
+      "page": 60,
+      "excerpt": "PDF第60页型号目录中出现 MS828-1G 字样"
+    },
+    {
+      "claim_id": "catalog_ms830_p60",
+      "history_id": "H-efa6389bb9aa51797b00",
+      "field": "model_exists",
+      "value": "MS830",
+      "source_id": "huicheng_catalog_2026_10_unfingerprinted",
+      "page": 60,
+      "excerpt": "PDF第60页型号目录中出现 MS830 字样"
+    },
+    {
+      "claim_id": "catalog_gl1_336_p37",
+      "history_id": "H-a8a2efa05ec7cbe81bff",
+      "field": "model_exists",
+      "value": "GL1-336",
+      "source_id": "huicheng_catalog_2026_10_unfingerprinted",
+      "page": 37,
+      "excerpt": "PDF第37页型号目录中出现 GL1-336 字样"
+    },
+    {
+      "claim_id": "catalog_gl1_103_50_p37",
+      "history_id": "H-7a351ba9efd4e2fbf8e5",
+      "field": "model_exists",
+      "value": "GL1-103-50",
+      "source_id": "huicheng_catalog_2026_10_unfingerprinted",
+      "page": 37,
+      "excerpt": "PDF第37页型号目录中出现 GL1-103-50 字样"
+    },
+    {
+      "claim_id": "catalog_gl1_128_75_p37",
+      "history_id": "H-ecc1f73a2329e4b060a5",
+      "field": "model_exists",
+      "value": "GL1-128-75",
+      "source_id": "huicheng_catalog_2026_10_unfingerprinted",
+      "page": 37,
+      "excerpt": "PDF第37页型号目录中出现 GL1-128-75 字样"
+    }
+  ]
+}
