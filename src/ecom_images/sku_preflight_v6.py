@@ -11,6 +11,7 @@ from .sku_batch import (
     MAX_IMAGES, _image_basename, _specs, _valid_hex, read_sku_rows,
 )
 from .sku_template_v3 import THEMES
+from .sku_rules_v7 import validate_sku_fields
 from .workflow import UploadedPicture, validate_upload
 
 
@@ -56,6 +57,10 @@ def inspect_batch(excel_data: bytes, pictures: list[UploadedPicture], *,
                 validate_upload(source[key])
                 with Image.open(io.BytesIO(source[key].data)) as im:
                     im.verify()
+                # 验证通过后重新读取像素；透明空图不应被标记为“可生成”。
+                with Image.open(io.BytesIO(source[key].data)) as im:
+                    if "A" in im.getbands() and im.getchannel("A").getextrema()[1] == 0:
+                        raise ValueError("图片全透明，没有可见产品内容")
             except (ValueError, OSError, UnidentifiedImageError) as exc:
                 checked[key] = f"图片文件损坏或不受支持：{exc}"
             else:
@@ -70,13 +75,13 @@ def inspect_batch(excel_data: bytes, pictures: list[UploadedPicture], *,
         photo = data["图片文件名"].strip()
         drawing = data.get("尺寸图文件名", "").strip()
         problems: list[str] = []
-        if not sku or not data["商品名称"].strip() or not photo:
-            problems.append("SKU编码、商品名称、图片文件名必填")
         if sku.casefold() in found:
             problems.append("SKU编码重复")
         found.add(sku.casefold())
-        if len(sku) > 80:
-            problems.append("SKU编码过长")
+        try:
+            validate_sku_fields(data, uses_dimension_layer=template_style is not None or custom_layout is not None)
+        except ValueError as exc:
+            problems.append(str(exc))
         if photo:
             if photo != _image_basename(photo) or photo in (".", ".."):
                 problems.append("产品图片文件名不能包含路径")
@@ -91,13 +96,6 @@ def inspect_batch(excel_data: bytes, pictures: list[UploadedPicture], *,
                 issue = problem(drawing)
                 if issue:
                     problems.append(f"尺寸图：{issue}")
-        try:
-            _specs(data)
-            if template_style is None and custom_layout is None:
-                _valid_hex(data["色块颜色"] or "#0D7FF4", "色块颜色")
-                _valid_hex(data["标题字色"] or "#FFFFFF", "标题字色")
-        except ValueError as exc:
-            problems.append(str(exc))
         output.append({"Excel行号": row.row_number, "SKU": sku,
                        "状态": "需修正" if problems else "可生成",
                        "原因": "；".join(problems) if problems else "图片及必填字段可用于制图；商品真实性待人工核对"})

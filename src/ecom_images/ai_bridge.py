@@ -71,8 +71,18 @@ def generate_xinghe(
         images = sorted(p for p in output.rglob("*") if p.is_file() and p.suffix.lower() in {".png", ".jpg", ".webp"})
         if not images:
             raise RuntimeError("接口未返回可用图片，请查看服务商调用记录")
+        if len(images) > quantity:
+            raise RuntimeError("接口实际返回图片数超过请求数量，拒绝继续打包")
+        validated = []
+        for item in images:
+            content = item.read_bytes()
+            try:
+                validate_upload(UploadedPicture(item.name, content))
+            except ValueError as exc:
+                raise RuntimeError(f"接口返回图片不合格：{item.name}：{exc}") from exc
+            validated.append((item, content))
         stream = io.BytesIO()
         with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for index, item in enumerate(images, 1):
-                zip_file.writestr(f"xinghe_{index:02d}{item.suffix.lower()}", item.read_bytes())
+            for index, (item, content) in enumerate(validated, 1):
+                zip_file.writestr(f"xinghe_{index:02d}{item.suffix.lower()}", content)
         return stream.getvalue()

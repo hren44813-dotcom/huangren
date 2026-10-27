@@ -108,7 +108,9 @@ def _sheet_filename(archive: zipfile.ZipFile) -> str:
     rel = next((x for x in relationships.findall(f"{PKG}Relationship") if x.attrib.get("Id") == relation_id), None)
     if rel is None or rel.attrib.get("TargetMode") == "External":
         raise ValueError("Excel 工作表关系无效")
-    target = rel.attrib["Target"]
+    target = rel.attrib.get("Target")
+    if not target:
+        raise ValueError("Excel 工作表目标路径缺失")
     result = posixpath.normpath(target.lstrip("/") if target.startswith("/") else posixpath.join("xl", target))
     if not result.startswith("xl/worksheets/") or result not in archive.namelist():
         raise ValueError("Excel 工作表路径非法")
@@ -126,7 +128,10 @@ def _cell_text(cell: ET.Element, strings: list[str]) -> str:
     raw = v.text if v is not None and v.text is not None else ""
     if kind == "s":
         try:
-            return strings[int(raw)]
+            index = int(raw)
+            if index < 0:
+                raise ValueError("共享字符串索引不能为负数")
+            return strings[index]
         except (ValueError, IndexError) as exc:
             raise ValueError("Excel 共享字符串索引无效") from exc
     return raw
@@ -231,7 +236,7 @@ def _dimension(value: str, column: str) -> str:
 def _csv_safe(value: Any) -> str:
     """Excel 打开 CSV 时避免用户输入成为公式。"""
     value = str(value)
-    return "'" + value if value.lstrip().startswith(("=", "+", "-", "@")) else value
+    return "'" + value if value.lstrip().startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r", "\n")) else value
 
 
 def _specs(row: dict[str, str]) -> list[dict[str, str]]:
@@ -250,10 +255,12 @@ def _specs(row: dict[str, str]) -> list[dict[str, str]]:
 
 def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, template_style: str | None = None,
                     custom_layout: dict[str, Any] | None = None,
-                    clean_template: UploadedPicture | None = None) -> SkuBatchResult:
+                    clean_template: UploadedPicture | None = None,
+                    allowed_row_numbers: frozenset[int] | None = None) -> SkuBatchResult:
     """每行独立生成，失败行记录原因；不以其他图片替代缺失产品图。"""
     from .sku_template_v3 import THEMES, render_sku_template
     from .sku_layout_v4 import render_custom_sku, validate_layout
+    from .sku_rules_v7 import validate_sku_fields
     if custom_layout is not None:
         if template_style is not None:
             raise ValueError("自定义 V4 布局不能同时使用 V3 固定预设")
@@ -283,15 +290,12 @@ def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, templ
             status = {"excel_row": row.row_number, "sku": sku, "source_file": source_name,
                       "status": "failed", "output_file": "", "message": ""}
             try:
-                if not sku or not data["商品名称"].strip() or not source_name:
-                    raise ValueError("SKU编码、商品名称、图片文件名均为必填")
+                if allowed_row_numbers is not None and row.row_number not in allowed_row_numbers:
+                    raise ValueError("预检查未通过，本行已跳过；先修正输入再生成")
                 if sku.casefold() in seen_sku:
                     raise ValueError("SKU编码重复，请检查 Excel")
                 seen_sku.add(sku.casefold())
-                if len(sku) > 80:
-                    raise ValueError("SKU编码过长（最多80字符）")
-                if source_name != _image_basename(source_name) or source_name in {".", ".."}:
-                    raise ValueError("图片文件名只能填写文件名，不能包含目录或路径")
+                validate_sku_fields(data, uses_dimension_layer=template_style is not None or custom_layout is not None)
                 pic = image_lookup.get(source_name.casefold())
                 if pic is None:
                     raise ValueError("找不到对应产品图片，请核对图片文件名和扩展名")

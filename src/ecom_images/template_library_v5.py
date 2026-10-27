@@ -46,8 +46,12 @@ def save_template(directory: str | Path, name: str, layout: dict, *, overwrite: 
     payload = layout_json(layout)  # 先验证，失败时不得改动现有模板
     target = _target(directory, name)
     names = list_templates(directory)
-    if not overwrite and any(n.casefold() == target.stem.casefold() for n in names):
+    matched = next((n for n in names if n.casefold() == target.stem.casefold()), None)
+    if not overwrite and matched is not None:
         raise ValueError("模板名称已存在，请换一个名字，或勾选覆盖")
+    # 在区分大小写的系统中也避免出现 ABC/abc 两套不同文件。
+    if overwrite and matched is not None and matched != target.stem:
+        target = _target(directory, matched)
     if len(names) >= MAX_TEMPLATES and not target.exists():
         raise ValueError(f"最多保存 {MAX_TEMPLATES} 套模板，请先清理旧模板")
     if target.exists() and not overwrite:

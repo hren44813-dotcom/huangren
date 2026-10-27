@@ -93,8 +93,12 @@ def render(st, platform: str) -> None:
             try:
                 with st.spinner("正在逐行生成 SKU 图及检查导出尺寸..."):
                     pictures = unpack_image_zip(zip_bytes) if zip_bytes else uploaded_pictures
+                    # 防止“只处理合格行”勾选被绕过；名单严格来自当前输入的预检查快照。
+                    allowed = frozenset(int(row["Excel行号"]) for row in current_preflight.rows
+                                        if row["状态"] == "可生成")
                     result = build_sku_batch(excel_bytes, pictures, template_style=selected_style,
-                                             custom_layout=custom_layout, clean_template=clean_template)
+                                             custom_layout=custom_layout, clean_template=clean_template,
+                                             allowed_row_numbers=allowed)
                 job = new_record(result.images, fingerprint=fingerprint, platform=platform,
                                  template=template_choice, failed_generation=result.failures)
                 try:

@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from ecom_images.ai_bridge import generate_xinghe  # noqa: E402
+from ecom_images.ai_result_guard_v7 import ai_request_fingerprint, valid_cached_ai_result  # noqa: E402
 from ecom_images.session_guard import input_fingerprint  # noqa: E402
 from ecom_images.main_direction_ui import render as render_main_directions  # noqa: E402
 from ecom_images.sku_batch_ui import render as render_sku_batch  # noqa: E402
@@ -159,23 +160,31 @@ with ai_tab:
     ai_key = st.text_input("星河 API Key（仅用于本次调用，不写入仓库）", type="password")
     ai_model = st.text_input("服务商模型名称", value="gpt-image-2")
     agreed = st.checkbox("我确认拥有该图片的使用权，同意将它与提示词发送给第三方星河接口，并自行承担接口费用")
+    ai_picture = UploadedPicture(ai_photo.name, ai_photo.getvalue()) if ai_photo else None
+    request_fingerprint = ai_request_fingerprint(
+        ai_picture, platform=platform, prompt=prompt, ratio=ratio,
+        resolution=resolution, quantity=int(ai_count), model=ai_model)
     if st.button("调用星河 AI 生成（可能收费）", type="secondary", use_container_width=True, key="make_ai"):
+        st.session_state.pop("ai_zip", None)
         if not ai_photo:
             st.error("请先上传 AI 参考图")
         else:
             try:
                 with st.spinner("正在调用第三方服务…"):
                     zip_data = generate_xinghe(
-                        UploadedPicture(ai_photo.name, ai_photo.getvalue()), api_key=ai_key,
+                        ai_picture, api_key=ai_key,
                         model=ai_model, prompt=prompt, ratio=ratio, resolution=resolution,
                         quantity=int(ai_count), consent=agreed,
                     )
-                st.session_state["ai_zip"] = zip_data
+                st.session_state["ai_zip"] = (request_fingerprint, zip_data)
                 st.success("服务商已返回图片，请下载并逐张核对。")
             except (ValueError, RuntimeError, OSError) as exc:
                 st.error(f"AI 制作失败：{exc}")
-    if st.session_state.get("ai_zip"):
-        data = st.session_state["ai_zip"]
+    cached_ai = st.session_state.get("ai_zip")
+    data = valid_cached_ai_result(cached_ai, request_fingerprint)
+    if cached_ai and data is None:
+        st.warning("参考图、提示词或生成参数已变化；先前 AI 结果已隐藏，避免误下载旧商品图片。")
+    if data is not None:
         st.download_button("下载 AI 图片 ZIP", data=data, file_name="xinghe_detail_images.zip", mime="application/zip")
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
             for item in zf.namelist():
