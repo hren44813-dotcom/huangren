@@ -2,24 +2,26 @@
 from __future__ import annotations
 
 from pathlib import Path
+import uuid
 
 from .session_guard import input_fingerprint
 from .sku_batch import build_sku_batch, read_sku_rows, unpack_image_zip
 from .sku_template_v3 import THEMES
 from .sku_layout_ui import configure as configure_v4
 from .workflow import UploadedPicture
+from .sku_review_ui import render as render_sku_review
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" / "sku_import_template.xlsx"
 TEMPLATE_V3_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" / "sku_import_template_v3.xlsx"
 
 
 def render(st, platform: str) -> None:
-    st.subheader("Excel 批量 SKU · V2 / V3 / V4 自定义版式")
-    template_choice = st.selectbox("选择模板版式", ["V2 经典 SKU 版式", *THEMES, "V4 自定义参考模板布局"], key="sku_template_style")
-    using_v4 = template_choice == "V4 自定义参考模板布局"
+    st.subheader("Excel 批量 SKU · V2 / V3 / V4 / V5 模板库与人工审核")
+    template_choice = st.selectbox("选择模板版式", ["V2 经典 SKU 版式", *THEMES, "V5 自定义布局与模板库（兼容V4）"], key="sku_template_style")
+    using_v4 = template_choice == "V5 自定义布局与模板库（兼容V4）"
     selected_style = None if template_choice == "V2 经典 SKU 版式" or using_v4 else template_choice
     custom_layout, clean_template, layout_payload = (configure_v4(st) if using_v4 else (None, None, b""))
-    st.caption("V3 有三套固定工业风预设；V4 支持手动校准标题、产品、原尺寸图和参数表区域，不能自动去除参考图中的旧商品。")
+    st.caption("V3 有三套工业风预设；V5 在 V4 版式基础上增加位置微调、可保存模板及审核表，不能自动清除旧模板上的旧商品。")
     st.caption("仅将已核实的尺寸与材质绘制到原产品照片上；不改变孔位、产品比例和机械结构。适用于拉手、锁具、铰链、阻尼转轴等产品。")
     chosen_template = TEMPLATE_V3_PATH if (selected_style or using_v4) else TEMPLATE_PATH
     st.download_button("📥 下载 Excel SKU 填写模板", chosen_template.read_bytes(),
@@ -64,6 +66,7 @@ def render(st, platform: str) -> None:
                     result = build_sku_batch(excel_bytes, pictures, template_style=selected_style,
                                              custom_layout=custom_layout, clean_template=clean_template)
                 st.session_state["sku_excel_result"] = (fingerprint, result)
+                st.session_state["sku_excel_review_id"] = uuid.uuid4().hex
             except (ValueError, RuntimeError, OSError) as exc:
                 st.error(f"批量制作失败：{exc}")
     saved = st.session_state.get("sku_excel_result")
@@ -83,3 +86,5 @@ def render(st, platform: str) -> None:
                 for col, (name, data, _) in zip(cols, result.images[start:start + 3]):
                     with col:
                         st.image(data, caption=name, use_container_width=True)
+
+        render_sku_review(st, result, st.session_state.get("sku_excel_review_id", "unset"))

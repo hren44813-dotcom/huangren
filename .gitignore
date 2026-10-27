@@ -29,3 +29,6 @@ generated-images/
 
 # Streamlit private settings
 .streamlit/secrets.toml
+
+# V5 local template library (private to this machine)
+.local/
