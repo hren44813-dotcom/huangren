@@ -1,6 +1,7 @@
 """Excel 批量 SKU 规格图的中文 Streamlit 页面。"""
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 from .session_guard import input_fingerprint
@@ -10,7 +11,8 @@ from .sku_layout_ui import configure as configure_v4
 from .workflow import UploadedPicture
 from .sku_review_ui import render as render_sku_review
 from .sku_preflight_v6 import inspect_batch
-from .production_ledger_v6 import list_records, new_record, save_record
+from .production_ledger_v6 import new_record
+from .database_v9 import DEFAULT_DB, list_jobs, save_job, integrity_report, backup_database
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" / "sku_import_template.xlsx"
 TEMPLATE_V3_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" / "sku_import_template_v3.xlsx"
@@ -69,7 +71,7 @@ def render(st, platform: str) -> None:
                 preview_result = inspect_batch(excel_bytes, pictures, template_style=selected_style,
                                                custom_layout=custom_layout)
                 st.session_state["sku_preflight_v6"] = (fingerprint, preview_result)
-            except (OSError, RuntimeError, ValueError) as exc:
+            except (OSError, RuntimeError, ValueError, sqlite3.Error) as exc:
                 st.error(f"预检查失败：{exc}")
     preflight = st.session_state.get("sku_preflight_v6")
     current_preflight = preflight[1] if preflight and preflight[0] == fingerprint else None
@@ -101,11 +103,12 @@ def render(st, platform: str) -> None:
                                              allowed_row_numbers=allowed)
                 job = new_record(result.images, fingerprint=fingerprint, platform=platform,
                                  template=template_choice, failed_generation=result.failures)
+                job_revision = None
                 try:
-                    save_record(HISTORY, job)
-                except OSError as exc:
-                    st.warning(f"图片已生成，但本机任务历史写入失败：{exc}")
-                st.session_state["sku_excel_result"] = (fingerprint, result, job)
+                    job_revision = save_job(DEFAULT_DB, job)
+                except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
+                    st.error(f"本机数据库保存失败：{exc}。当前只允许下载内部制作包，不能进行审核留档。")
+                st.session_state["sku_excel_result"] = (fingerprint, result, job, job_revision)
             except (ValueError, RuntimeError, OSError) as exc:
                 st.error(f"批量制作失败：{exc}")
     saved = st.session_state.get("sku_excel_result")
@@ -129,14 +132,27 @@ def render(st, platform: str) -> None:
                     with col:
                         st.image(data, caption=name, use_container_width=True)
 
-        if job_record:
-            render_sku_review(st, result, job_record)
-    with st.expander("V6 本机任务流水记录（仅保存摘要，不保存原商品照片）", expanded=False):
+        if job_record and len(saved) > 3 and saved[3] is not None:
+            render_sku_review(st, result, job_record, saved[3])
+    with st.expander("V9 SQLite 数据库 · 任务流水、完整性与备份", expanded=False):
         try:
-            history = list_records(HISTORY, limit=20)
+            history = list_jobs(DEFAULT_DB, limit=40)
             if history:
                 st.dataframe(history, hide_index=True, use_container_width=True)
             else:
-                st.caption("暂无任务记录。刷新网页后，本机已保存的摘要仍可查看。")
-        except OSError as exc:
-            st.warning(f"无法读取本机任务列表：{exc}")
+                st.caption("数据库暂无任务记录。旧版 JSON 可通过 scripts/db_admin.py import-legacy 迁移。")
+            if st.button("检查数据库完整性", key="db_v9_check"):
+                check = integrity_report(DEFAULT_DB)
+                st.success("数据库与业务摘要校验通过") if check["ok"] else st.error("校验存在问题，请查看输出")
+                st.json(check)
+            if st.button("创建当前数据库备份", key="db_v9_backup"):
+                import tempfile
+                with tempfile.TemporaryDirectory() as folder:
+                    snapshot = backup_database(DEFAULT_DB, Path(folder) / "huangren_backup.sqlite3")
+                    st.session_state["db_v9_backup_bytes"] = snapshot.read_bytes()
+            if st.session_state.get("db_v9_backup_bytes"):
+                st.download_button("下载 SQLite 数据库备份", st.session_state["db_v9_backup_bytes"],
+                                   file_name="huangren_backup.sqlite3", mime="application/octet-stream")
+            st.caption("数据库仅保存在当前设备 .local/，不会自动同步。备份只包含业务元数据；发布审核仍需真人复核。")
+        except (OSError, RuntimeError, ValueError, sqlite3.Error) as exc:
+            st.error(f"本机数据库不可用：{exc}")

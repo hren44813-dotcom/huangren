@@ -8,3 +8,6 @@
 - 所有成品在实际平台发布前必须人工验收结构、尺寸、文字、合规和视觉质量。
 
 - 工业五金主图/SKU 制作前先读 `docs/knowledge-industrial-hardware.md`。SKU 预设样式使用 `src/ecom_images/sku_template_v3.py`；尺寸图作为原图完整缩放，不能修改图中的孔位、引线和数字。用户未提供证据的性能与兼容性不可声称。
+
+- V9 数据保存：任务、审核摘要与 SKU 布局模板通过 `src/ecom_images/database_v9.py` 使用 `.local/huangren.sqlite3`；禁止提交任何 `.local/` 内容或 API 密钥。旧版 JSON 仅通过显式 `scripts/db_admin.py import-legacy` 迁移，迁移前必须备份且不可删除源文件。
+- 数据库恢复：必须先关闭所有使用数据库的程序，检查 WAL/SHM 文件状态，并且经用户明确授权后才能覆盖；不能通过复制运行中的 SQLite 文件实施备份。

@@ -1,15 +1,18 @@
 """V6 审核工作台：提交审核结果后才能导出已审核图片，修改审核表会使旧导出失效。"""
 from __future__ import annotations
 
+import hashlib
+import sqlite3
 from pathlib import Path
 
 from .sku_review_v5 import FIELDS, audit_reviews, review_rows, review_zip, review_signature
-from .production_ledger_v6 import record_review, save_record
+from .production_ledger_v6 import record_review
+from .database_v9 import DEFAULT_DB, save_job
 
 HISTORY = Path(__file__).resolve().parents[2] / ".local" / "production_runs"
 
 
-def render(st, result, job_record: dict) -> None:
+def render(st, result, job_record: dict, revision: int = 1) -> None:
     st.markdown("#### ③ 逐张人工审核 → ④ 保存审核并导出")
     st.caption("机器通过不代表产品真实性审核。审核结果与本批输出图片 SHA256 绑定，修改图片或审核表后必须重新确认。")
     if not result.images:
@@ -26,7 +29,8 @@ def render(st, result, job_record: dict) -> None:
     try:
         edited = table.to_dict("records") if hasattr(table, "to_dict") else list(table)
         report = audit_reviews(result.images, edited, failed_generation=result.failures)
-        signature = review_signature(report)
+        signature = hashlib.sha256((review_signature(report) + "|" +
+                                    st.session_state.get(f"v6_reviewer_{job_record['id']}", "")).encode("utf-8")).hexdigest()
     except (ValueError, TypeError) as exc:
         st.error(f"审核表校验未通过：{exc}")
         return
@@ -37,12 +41,15 @@ def render(st, result, job_record: dict) -> None:
     save_key = f"v6_saved_review_{batch_id}"
     if st.button("确认并保存当前审核记录", type="primary", key=f"v6_save_{batch_id}"):
         try:
-            saved_record = record_review(job_record, result.images, report, reviewer=alias)
-            save_record(HISTORY, saved_record)
+            previous = st.session_state.get(save_key)
+            baseline = previous[2] if previous else job_record
+            expected = previous[3] if previous else revision
+            saved_record = record_review(baseline, result.images, report, reviewer=alias)
             approved_bundle = review_zip(result.images, report)
-            st.session_state[save_key] = (signature, approved_bundle, saved_record)
-            st.success("审核记录已保存到本机任务历史；下载包仅包含明确通过的图片。")
-        except (ValueError, OSError) as exc:
+            new_revision = save_job(DEFAULT_DB, saved_record, expected_revision=expected)
+            st.session_state[save_key] = (signature, approved_bundle, saved_record, new_revision)
+            st.success("审核结果已保存到 SQLite 数据库，图片校验值与审核历史已绑定。")
+        except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
             st.error(f"无法保存审核结果：{exc}")
     current = st.session_state.get(save_key)
     if current and current[0] != signature:

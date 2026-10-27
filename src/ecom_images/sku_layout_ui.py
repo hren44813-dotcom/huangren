@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import hashlib
+import sqlite3
 from pathlib import Path
 
 from .sku_layout_v4 import (
@@ -10,7 +11,7 @@ from .sku_layout_v4 import (
     preview_regions, validate_layout,
 )
 from .sku_template_v3 import THEMES
-from .template_library_v5 import delete_template, list_templates, load_template, save_template
+from .database_v9 import DEFAULT_DB, delete_template, list_templates, load_template, save_template
 from .workflow import UploadedPicture
 
 LIBRARY = Path(__file__).resolve().parents[2] / ".local" / "sku_templates"
@@ -30,7 +31,11 @@ def configure(st) -> tuple[dict | None, UploadedPicture | None, bytes]:
         st.warning("未确认净背景清洁，生成时将改用纯色背景。")
 
     style = st.selectbox("工业版式配色", list(THEMES), key="v4_style")
-    library_names = list_templates(LIBRARY)
+    try:
+        library_names = list_templates(DEFAULT_DB)
+    except (OSError, ValueError, RuntimeError, sqlite3.Error) as exc:
+        st.error(f"本地数据库无法读取模板：{exc}")
+        return None, None, b""
     selected = st.selectbox("从本机模板库载入版式（可选）", ["使用默认版式", *library_names], key="v5_library_select")
     imported = st.file_uploader("或上传已有 JSON 布局", type=["json"], key="v4_layout_json")
     try:
@@ -38,11 +43,11 @@ def configure(st) -> tuple[dict | None, UploadedPicture | None, bytes]:
             layout = layout_from_json(imported.getvalue())
             st.caption("优先使用上传的 JSON；不自动切换文件中保存的版式颜色。")
         elif selected != "使用默认版式":
-            layout = load_template(LIBRARY, selected)
+            layout = load_template(DEFAULT_DB, selected)
         else:
             layout = default_layout(style)
         source_key = hashlib.sha256(layout_json(layout)).hexdigest()[:12]
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError, sqlite3.Error) as exc:
         st.error(f"模板加载失败：{exc}")
         return None, None, b""
 
@@ -105,21 +110,21 @@ def configure(st) -> tuple[dict | None, UploadedPicture | None, bytes]:
         return None, None, b""
 
     with st.expander("本机模板库：保存 / 删除", expanded=False):
-        st.caption("模板库存放在项目的 .local/sku_templates/，不上传 GitHub，不保存商品图片。在线临时主机重启后可能丢失，请同时下载 JSON 备份。")
+        st.caption("模板库存放在本机 .local/huangren.sqlite3（SQLite）；旧版 JSON 可通过数据库迁移工具导入，不上传 GitHub。建议定期备份数据库及导出 JSON。")
         new_name = st.text_input("模板名称", placeholder="例如：LS拉手-蓝白-横版", key="v5_name")
         overwrite = st.checkbox("覆盖同名模板", key="v5_overwrite")
         if st.button("保存当前布局到本机", key="v5_save"):
             try:
-                actual = save_template(LIBRARY, new_name, layout, overwrite=overwrite)
+                actual = save_template(DEFAULT_DB, new_name, layout, overwrite=overwrite)
                 st.success(f"已保存本机模板：{actual}。建议同时下载 JSON 备份。")
-            except (ValueError, OSError) as exc:
+            except (ValueError, OSError, sqlite3.Error) as exc:
                 st.error(f"保存失败：{exc}")
         if selected != "使用默认版式":
             sure = st.checkbox(f"确认删除模板「{selected}」", key="v5_delete_confirm")
             if st.button("删除选中的本机模板", disabled=not sure, key="v5_delete"):
                 try:
-                    delete_template(LIBRARY, selected)
+                    delete_template(DEFAULT_DB, selected)
                     st.success("已删除模板。请重新选择默认版式或其他模板。")
-                except (ValueError, OSError) as exc:
+                except (ValueError, OSError, sqlite3.Error) as exc:
                     st.error(f"删除失败：{exc}")
     return layout, clean, payload
