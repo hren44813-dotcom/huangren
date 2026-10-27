@@ -55,10 +55,12 @@ def record_review(record: dict[str, Any], images: list[tuple[str, bytes, dict]],
     if report.get("failed_generation") != record.get("failed_generation"):
         raise ValueError("审核报告和本批次的失败数量不一致")
     summary = {
+        "schema_version": 2,
         "reviewed_utc": _now(), "reviewer": reviewer.strip(),
         "counts": report["counts"], "image_sha256": {r["file"]: r["image_sha256"] for r in report["rows"]},
         "ready_to_publish": bool(report["ready_to_publish"]),
-        "rows": [{"file": r["file"], "status": r["status"], "note": r["note"]} for r in report["rows"]],
+        "rows": [{"file": r["file"], "status": r["status"], "note": r["note"],
+                  "checks": dict(r["checks"])} for r in report["rows"]],
     }
     result = {**record, "review": summary, "updated_utc": _now()}
     if report["counts"]["返工"] or record["failed_generation"]:

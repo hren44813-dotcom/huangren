@@ -1,4 +1,4 @@
-"""V9 local SQLite metadata store (no product pixels or API credentials).
+"""Local SQLite metadata store, schema V2 (no product pixels or API credentials).
 
 JSON V5/V6 files are *not* deleted; they can be imported explicitly and safely.
 The schema uses transactional SQLite storage with file hashes and append-only
@@ -20,7 +20,7 @@ from typing import Any, Iterator
 from .sku_layout_v4 import layout_from_json, layout_json
 from .template_library_v5 import MAX_TEMPLATES, template_name
 
-DB_VERSION = 1
+DB_VERSION = 2
 MAX_RECORD_BYTES = 256_000
 HASH = re.compile(r"^[0-9a-f]{64}$")
 IDENTIFIER = re.compile(r"^[0-9a-f]{32}$")
@@ -48,69 +48,200 @@ def _json(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
+def _schema_columns(conn: sqlite3.Connection) -> dict[str, set[str]]:
+    tables = ("jobs", "job_files", "review_events", "templates", "imported_files")
+    result = {}
+    for table in tables:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
+            raise RuntimeError(f"数据库结构缺少表：{table}")
+        result[table] = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    return result
+
+
+_REQUIRED_COLUMNS = {
+    "jobs": {"id", "created_utc", "updated_utc", "platform", "template", "input_sha256", "generated", "failed_generation", "stage", "record_json", "revision"},
+    "job_files": {"job_id", "name", "sha256"},
+    "review_events": {"event_id", "job_id", "created_utc", "reviewer", "report_sha256", "review_json"},
+    "templates": {"name_key", "name", "layout_json", "layout_sha256", "updated_utc"},
+    "imported_files": {"origin", "kind", "sha256", "imported_utc"},
+}
+
+
+def _validate_schema(conn: sqlite3.Connection, *, require_review_guards: bool) -> None:
+    columns = _schema_columns(conn)
+    for table, required in _REQUIRED_COLUMNS.items():
+        missing = required - columns[table]
+        if missing:
+            raise RuntimeError(f"数据库结构不兼容：{table} 缺少字段 {', '.join(sorted(missing))}")
+    primary_keys = {table: {row[1]: row[5] for row in conn.execute(f"PRAGMA table_info({table})") if row[5]}
+                    for table in _REQUIRED_COLUMNS}
+    expected_pks = {"jobs": {"id": 1}, "job_files": {"job_id": 1, "name": 2},
+                    "review_events": {"event_id": 1}, "templates": {"name_key": 1},
+                    "imported_files": {"origin": 1}}
+    for table, expected in expected_pks.items():
+        if primary_keys[table] != expected:
+            raise RuntimeError(f"数据库结构不兼容：{table} 主键约束缺失或不正确")
+    fks = conn.execute("PRAGMA foreign_key_list(job_files)").fetchall()
+    if not any(row[2] == "jobs" and row[3] == "job_id" and row[4] == "id" for row in fks):
+        raise RuntimeError("数据库结构不兼容：job_files 到 jobs 的外键缺失")
+    if require_review_guards:
+        triggers = {row[0]: (row[1] or "").casefold() for row in conn.execute(
+            "SELECT name,sql FROM sqlite_master WHERE type='trigger'").fetchall()}
+        expected = {"review_events_no_update": ("before update on review_events", "raise(abort"),
+                    "review_events_no_delete": ("before delete on review_events", "raise(abort")}
+        for name, fragments in expected.items():
+            sql = triggers.get(name, "")
+            if not sql or any(fragment not in sql for fragment in fragments):
+                raise RuntimeError("数据库审核历史保护触发器缺失或已被修改；拒绝写入")
+
+
+def _create_v1_schema(conn: sqlite3.Connection) -> None:
+    conn.executescript("""BEGIN IMMEDIATE;
+        CREATE TABLE jobs (
+          id TEXT PRIMARY KEY, created_utc TEXT NOT NULL, updated_utc TEXT NOT NULL,
+          platform TEXT NOT NULL, template TEXT NOT NULL, input_sha256 TEXT NOT NULL,
+          generated INTEGER NOT NULL, failed_generation INTEGER NOT NULL,
+          stage TEXT NOT NULL, record_json TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE TABLE job_files (
+          job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT,
+          name TEXT NOT NULL, sha256 TEXT NOT NULL, PRIMARY KEY(job_id, name)
+        );
+        CREATE TABLE review_events (
+          event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT,
+          created_utc TEXT NOT NULL, reviewer TEXT NOT NULL,
+          report_sha256 TEXT NOT NULL, review_json TEXT NOT NULL
+        );
+        CREATE INDEX idx_review_job ON review_events(job_id,event_id);
+        CREATE INDEX idx_jobs_created ON jobs(created_utc DESC,id);
+        CREATE TABLE templates (
+          name_key TEXT PRIMARY KEY, name TEXT NOT NULL, layout_json TEXT NOT NULL,
+          layout_sha256 TEXT NOT NULL, updated_utc TEXT NOT NULL
+        );
+        CREATE TABLE imported_files (
+          origin TEXT PRIMARY KEY, kind TEXT NOT NULL, sha256 TEXT NOT NULL, imported_utc TEXT NOT NULL
+        );
+        PRAGMA user_version=1;
+        COMMIT;
+    """)
+
+
+def _migrate_v1_to_v2(conn: sqlite3.Connection) -> None:
+    existing = {row[0]: (row[1] or "").casefold() for row in conn.execute(
+        "SELECT name,sql FROM sqlite_master WHERE type='trigger'").fetchall()}
+    expected = {"review_events_no_update": ("before update on review_events", "raise(abort"),
+                "review_events_no_delete": ("before delete on review_events", "raise(abort")}
+    for name, fragments in expected.items():
+        if name in existing and any(fragment not in existing[name] for fragment in fragments):
+            raise RuntimeError(f"现有触发器 {name} 内容不安全，拒绝自动迁移")
+    conn.executescript("""BEGIN IMMEDIATE;
+        CREATE TRIGGER IF NOT EXISTS review_events_no_update
+        BEFORE UPDATE ON review_events
+        BEGIN SELECT RAISE(ABORT, 'review history is append-only'); END;
+        CREATE TRIGGER IF NOT EXISTS review_events_no_delete
+        BEFORE DELETE ON review_events
+        BEGIN SELECT RAISE(ABORT, 'review history is append-only'); END;
+        PRAGMA user_version=2;
+        COMMIT;
+    """)
+
+
 @contextmanager
 def open_database(path: str | Path = DEFAULT_DB) -> Iterator[sqlite3.Connection]:
-    """Open, migrate schema and close connection; each data write is a transaction."""
+    """Open a local SQLite database and apply only known forward migrations."""
     target = _check_path(path)
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     conn = sqlite3.connect(str(target), timeout=12, isolation_level=None)
     try:
-        if os.name == "posix":
-            os.chmod(target, 0o600)
         conn.execute("PRAGMA busy_timeout=12000")
         conn.execute("PRAGMA foreign_keys=ON")
-        conn.execute("PRAGMA journal_mode=WAL")
         version = conn.execute("PRAGMA user_version").fetchone()[0]
         if version > DB_VERSION:
             raise RuntimeError(f"数据库版本 {version} 高于程序支持的 {DB_VERSION}，拒绝写入")
         if version == 0:
-            try:
-                conn.executescript("""BEGIN IMMEDIATE;
-
-                    CREATE TABLE IF NOT EXISTS jobs (
-                      id TEXT PRIMARY KEY, created_utc TEXT NOT NULL, updated_utc TEXT NOT NULL,
-                      platform TEXT NOT NULL, template TEXT NOT NULL, input_sha256 TEXT NOT NULL,
-                      generated INTEGER NOT NULL, failed_generation INTEGER NOT NULL,
-                      stage TEXT NOT NULL, record_json TEXT NOT NULL,
-                      revision INTEGER NOT NULL DEFAULT 1
-                    );
-                    CREATE TABLE IF NOT EXISTS job_files (
-                      job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT,
-                      name TEXT NOT NULL, sha256 TEXT NOT NULL,
-                      PRIMARY KEY(job_id, name)
-                    );
-                    CREATE TABLE IF NOT EXISTS review_events (
-                      event_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT,
-                      created_utc TEXT NOT NULL, reviewer TEXT NOT NULL,
-                      report_sha256 TEXT NOT NULL, review_json TEXT NOT NULL
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_review_job ON review_events(job_id,event_id);
-                    CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_utc DESC,id);
-                    CREATE TABLE IF NOT EXISTS templates (
-                      name_key TEXT PRIMARY KEY, name TEXT NOT NULL,
-                      layout_json TEXT NOT NULL, layout_sha256 TEXT NOT NULL,
-                      updated_utc TEXT NOT NULL
-                    );
-                    CREATE TABLE IF NOT EXISTS imported_files (
-                      origin TEXT PRIMARY KEY, kind TEXT NOT NULL,
-                      sha256 TEXT NOT NULL, imported_utc TEXT NOT NULL
-                    );
-                    PRAGMA user_version=1;
-                    COMMIT;
-                """)
-            except BaseException:
-                if conn.in_transaction:
-                    conn.execute("ROLLBACK")
-                raise
-        # Fail closed on pre-existing non-DB files or incompatible schemas.
-        conn.execute("SELECT id FROM jobs LIMIT 0")
+            objects = conn.execute("SELECT type,name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
+            if objects:
+                raise RuntimeError("数据库没有版本标记但已有数据库对象，拒绝自动初始化；请先备份并人工检查")
+            _create_v1_schema(conn)
+            version = 1
+        if version == 1:
+            _validate_schema(conn, require_review_guards=False)
+            _migrate_v1_to_v2(conn)
+            version = 2
+        if version != DB_VERSION:
+            raise RuntimeError(f"数据库版本 {version} 不受支持")
+        _validate_schema(conn, require_review_guards=True)
+        if os.name == "posix":
+            os.chmod(target, 0o600)
+        conn.execute("PRAGMA journal_mode=WAL")
         yield conn
     finally:
         conn.close()
 
 
-def _validate_job(record: dict[str, Any]) -> tuple[str, list[tuple[str, str]]]:
+
+def _validate_review_summary(review: dict[str, Any], pairs: list[tuple[str, str]],
+                             failed_generation: int, *, allow_legacy_review: bool = False) -> bool:
+    base = {"reviewed_utc", "reviewer", "counts", "image_sha256", "ready_to_publish", "rows"}
+    if not isinstance(review, dict) or set(review) - (base | {"schema_version"}) or not base.issubset(review):
+        raise ValueError("审核摘要字段不完整或包含未知字段")
+    reviewer = review.get("reviewer")
+    if not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 80:
+        raise ValueError("审核人标识无效")
+    reviewed_utc = review.get("reviewed_utc")
+    if not isinstance(reviewed_utc, str) or not reviewed_utc or len(reviewed_utc) > 60:
+        raise ValueError("审核时间无效")
+    try:
+        datetime.fromisoformat(reviewed_utc.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("审核时间格式无效") from exc
+    if type(review.get("ready_to_publish")) is not bool or review.get("image_sha256") != dict(pairs):
+        raise ValueError("审核发布标记或图片摘要无效")
+    rows = review.get("rows")
+    if not isinstance(rows, list) or len(rows) != len(pairs) or not all(isinstance(row, dict) for row in rows):
+        raise ValueError("审核文件列表无效")
+    if {row.get("file") for row in rows} != {name for name, _ in pairs}:
+        raise ValueError("审核文件列表不匹配")
+    statuses = {"待审核", "通过", "返工"}
+    counts = review.get("counts")
+    if not isinstance(counts, dict) or set(counts) != statuses or any(type(counts[s]) is not int or counts[s] < 0 for s in statuses):
+        raise ValueError("审核统计无效")
+    schema_version = review.get("schema_version")
+    legacy = schema_version is None
+    if legacy and not allow_legacy_review:
+        raise ValueError("旧版审核记录缺少逐项核验信息，请重新审核")
+    if not legacy and schema_version != 2:
+        raise ValueError("审核摘要版本不受支持")
+    actual = {status: 0 for status in statuses}
+    for row in rows:
+        status, note = row.get("status"), row.get("note")
+        if status not in statuses or not isinstance(note, str) or len(note) > 500:
+            raise ValueError("审核状态或备注无效")
+        if status == "返工" and not note.strip():
+            raise ValueError("返工记录必须填写原因")
+        if legacy:
+            if set(row) - {"file", "status", "note"}:
+                raise ValueError("旧版审核行包含未知字段")
+        else:
+            if set(row) != {"file", "status", "note", "checks"}:
+                raise ValueError("新版审核行缺少逐项检查")
+            checks = row.get("checks")
+            fields = {"产品结构", "原尺寸及标注", "卖点真实性", "平台与清晰度"}
+            if not isinstance(checks, dict) or set(checks) != fields or any(type(v) is not bool for v in checks.values()):
+                raise ValueError("逐项审核检查格式无效")
+            if status == "通过" and not all(checks.values()):
+                raise ValueError("未完成全部四项检查的图片不能标记通过")
+        actual[status] += 1
+    if counts != actual or sum(counts.values()) != len(pairs):
+        raise ValueError("审核统计与逐张记录不一致")
+    expected_ready = bool(pairs) and actual["通过"] == len(pairs) and failed_generation == 0
+    if not legacy and review["ready_to_publish"] != expected_ready:
+        raise ValueError("审核发布标记与逐张审核结果不一致")
+    return legacy
+
+
+def _validate_job(record: dict[str, Any], *, allow_legacy_review: bool = False) -> tuple[str, list[tuple[str, str]]]:
     if not isinstance(record, dict):
         raise ValueError("任务记录必须是对象")
     identifier = record.get("id")
@@ -122,7 +253,7 @@ def _validate_job(record: dict[str, Any]) -> tuple[str, list[tuple[str, str]]]:
                       "input_sha256", "generated", "failed_generation", "stage", "files", "review"}
     if set(record) - allowed_fields:
         raise ValueError("任务包含未知字段，为防泄露禁止入库")
-    if record.get("version") != 1:
+    if type(record.get("version")) is not int or record.get("version") != 1:
         raise ValueError("任务格式版本无效")
     files = record.get("files")
     if not isinstance(files, list) or len(files) > 120:
@@ -132,37 +263,50 @@ def _validate_job(record: dict[str, Any]) -> tuple[str, list[tuple[str, str]]]:
         if not isinstance(entry, dict):
             raise ValueError("图片摘要格式无效")
         name, digest = entry.get("name"), entry.get("sha256")
-        if not isinstance(name, str) or not name or len(name) > 255 or name != Path(name).name or "\\" in name or "/" in name:
+        if (not isinstance(name, str) or not name or len(name) > 255
+            or name != Path(name).name or "\\" in name or "/" in name
+            or name.startswith(".") or any(ord(ch) < 32 for ch in name)):
             raise ValueError("输出图片文件名不安全")
         if not isinstance(digest, str) or not HASH.fullmatch(digest):
             raise ValueError("图片校验值无效")
         pairs.append((name, digest))
-    if len(pairs) != len(set(name for name, _ in pairs)):
-        raise ValueError("任务图片文件名重复")
+    folded_names = [name.casefold() for name, _ in pairs]
+    if len(pairs) != len(set(folded_names)):
+        raise ValueError("任务图片文件名重复（忽略大小写后也必须唯一）")
     if type(record.get("generated")) is not int or record["generated"] != len(pairs):
         raise ValueError("生成数量与文件列表不一致")
     if type(record.get("failed_generation")) is not int or not 0 <= record["failed_generation"] <= 100000:
         raise ValueError("失败数量无效")
     for key, n in (("platform", 60), ("template", 100), ("stage", 80), ("created_utc", 60), ("updated_utc", 60)):
-        if not isinstance(record.get(key), str) or len(record[key]) > n or not record[key]:
+        if not isinstance(record.get(key), str) or len(record[key]) > n or not record[key].strip():
             raise ValueError(f"任务字段 {key} 无效")
+    for key in ("created_utc", "updated_utc"):
+        try:
+            datetime.fromisoformat(record[key].replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError(f"任务字段 {key} 时间格式无效") from exc
     review = record.get("review")
-    if review is not None:
-        if not isinstance(review, dict) or not isinstance(review.get("reviewer"), str) or not review["reviewer"].strip():
-            raise ValueError("人工审核信息无效")
-        if set(review) - {"reviewed_utc", "reviewer", "counts", "image_sha256", "ready_to_publish", "rows"}:
-            raise ValueError("审核摘要包含未知字段")
-        checks = review.get("image_sha256")
-        if not isinstance(checks, dict) or checks != dict(pairs):
-            raise ValueError("审核图片摘要与任务不一致")
-        rows = review.get("rows")
-        if (not isinstance(rows, list) or len(rows) != len(pairs)
-            or not all(isinstance(r, dict) for r in rows)
-            or {r.get("file") for r in rows} != {name for name, _ in pairs}
-            or any(set(r) - {"file", "status", "note"} for r in rows)):
-            raise ValueError("审核文件列表不匹配")
-        if type(review.get("ready_to_publish")) is not bool:
-            raise ValueError("审核发布标记无效")
+    if review is None:
+        if record["stage"] != "待人工审核":
+            raise ValueError("尚未审核的任务阶段必须为‘待人工审核’")
+    else:
+        legacy_review = _validate_review_summary(review, pairs, record["failed_generation"],
+                                                allow_legacy_review=allow_legacy_review)
+        if legacy_review:
+            if not allow_legacy_review:
+                raise ValueError("旧版审核记录必须重新审核")
+        else:
+            counts = review["counts"]
+            if counts["返工"] or record["failed_generation"]:
+                expected_stage = "返工中"
+            elif counts["待审核"]:
+                expected_stage = "部分待审核"
+            elif review["ready_to_publish"]:
+                expected_stage = "全部审核通过"
+            else:
+                expected_stage = "无可发布图片"
+            if record["stage"] != expected_stage:
+                raise ValueError("任务阶段与审核统计不一致")
     raw = _json(record).encode("utf-8")
     if len(raw) > MAX_RECORD_BYTES:
         raise ValueError("任务元数据超过最大限制")
@@ -184,6 +328,8 @@ def save_job(path: str | Path, record: dict[str, Any], *, expected_revision: int
             if previous is None:
                 if expected_revision is not None:
                     raise ValueError("任务未创建，版本不匹配")
+                if record.get("review") is not None:
+                    raise ValueError("新任务必须先以待审核状态创建；审核只能追加到已存在任务")
                 conn.execute("""INSERT INTO jobs(id,created_utc,updated_utc,platform,template,input_sha256,generated,
                     failed_generation,stage,record_json,revision) VALUES(?,?,?,?,?,?,?,?,?,?,1)""",
                     (identifier, record["created_utc"], record["updated_utc"], record["platform"], record["template"],
@@ -243,12 +389,18 @@ def list_jobs(path: str | Path, limit: int = 20, *, stage: str | None = None) ->
 
 
 def review_history(path: str | Path, identifier: str) -> list[dict[str, Any]]:
-    if not IDENTIFIER.fullmatch(identifier):
+    if not isinstance(identifier, str) or not IDENTIFIER.fullmatch(identifier):
         raise ValueError("任务编号无效")
     with open_database(path) as conn:
-        rows = conn.execute("SELECT event_id,created_utc,reviewer,report_sha256 FROM review_events WHERE job_id=? ORDER BY event_id",
-                            (identifier,)).fetchall()
-    return [{"event_id": r[0], "reviewed_utc": r[1], "reviewer": r[2], "sha256": r[3]} for r in rows]
+        rows = conn.execute("SELECT event_id,created_utc,reviewer,report_sha256,review_json FROM review_events WHERE job_id=? ORDER BY event_id", (identifier,)).fetchall()
+    history = []
+    for event_id, created_utc, reviewer, digest, raw in rows:
+        summary = json.loads(raw)
+        history.append({"event_id": event_id, "created_utc": created_utc, "reviewer": reviewer,
+                        "sha256": digest, "counts": summary.get("counts", {}),
+                        "ready_to_publish": summary.get("ready_to_publish", False),
+                        "schema_version": summary.get("schema_version", 1)})
+    return history
 
 
 def list_templates(path: str | Path) -> list[str]:
@@ -333,9 +485,12 @@ def migrate_legacy(path: str | Path, *, job_directory: str | Path, template_dire
                 digest = _sha(raw)
                 if kind == "job":
                     obj = json.loads(raw)
-                    identifier, pairs = _validate_job(obj)
+                    identifier, pairs = _validate_job(obj, allow_legacy_review=True)
                     if identifier != file.stem:
                         raise ValueError("任务文件名和编号不一致")
+                    if obj.get("review") is not None and obj["review"].get("schema_version") is None:
+                        obj["review"]["ready_to_publish"] = False
+                        obj["stage"] = "历史审核需复核"
                     job_raw = _json(obj)
                 else:
                     layout = layout_from_json(raw)
@@ -388,60 +543,126 @@ def migrate_legacy(path: str | Path, *, job_directory: str | Path, template_dire
 
 
 def integrity_report(path: str | Path) -> dict[str, Any]:
-    # A check must be read-only: never create a blank database merely because
-    # an operator selected the wrong path in the UI or CLI.
+    """Read-only integrity scan: never initializes, migrates, or repairs a DB."""
     target = _check_path(path)
+    empty_counts = {name: 0 for name in ("jobs", "job_files", "review_events", "templates", "imported_files")}
     if not target.is_file():
         return {"ok": False, "sqlite_integrity": ["database file does not exist"],
                 "foreign_key_errors": 0, "logical_errors": ["数据库文件不存在；未创建新文件"],
-                "schema_version": None,
-                "counts": {name: 0 for name in ("jobs", "job_files", "review_events", "templates", "imported_files")}}
-    with open_database(target) as conn:
-        checks = [r[0] for r in conn.execute("PRAGMA integrity_check").fetchall()]
-        fk_errors = conn.execute("PRAGMA foreign_key_check").fetchall()
-        rows = conn.execute("SELECT id,record_json,revision,generated FROM jobs").fetchall()
-        audit_entries = conn.execute("SELECT event_id,job_id,reviewer,review_json,report_sha256 FROM review_events ORDER BY event_id").fetchall()
-        templates = conn.execute("SELECT name,layout_json,layout_sha256 FROM templates").fetchall()
-        review_events = conn.execute("SELECT event_id,job_id,reviewer,report_sha256,review_json FROM review_events ORDER BY job_id,event_id").fetchall()
-        problems = []
-        for ident, raw, revision, generated in rows:
-            try:
-                obj = json.loads(raw)
-                _id, files = _validate_job(obj)
-                stored = conn.execute("SELECT name,sha256 FROM job_files WHERE job_id=? ORDER BY name", (ident,)).fetchall()
-                if _id != ident or sorted(files) != stored or len(files) != generated or revision < 1:
-                    problems.append(f"任务 {ident}: 文件或元数据不一致")
-            except (ValueError, TypeError, KeyError):
-                problems.append(f"任务 {ident}: JSON 内容异常")
-        for event_id, job_id, reviewer, raw, digest in audit_entries:
-            try:
-                event = json.loads(raw)
-                if (_sha(raw.encode("utf-8")) != digest or event.get("reviewer") != reviewer
-                    or not conn.execute("SELECT 1 FROM jobs WHERE id=?", (job_id,)).fetchone()):
-                    problems.append(f"审核事件 {event_id}: 摘要或关联信息不一致")
-            except (ValueError, TypeError, AttributeError):
-                problems.append(f"审核事件 {event_id}: 数据损坏")
-        for ident, raw, _, _ in rows:
-            try:
-                review = json.loads(raw).get("review")
-                latest = conn.execute("SELECT review_json FROM review_events WHERE job_id=? ORDER BY event_id DESC LIMIT 1", (ident,)).fetchone()
-                if (review is None) != (latest is None) or (review is not None and _json(review) != latest[0]):
-                    problems.append(f"任务 {ident}: 最新审核历史与任务摘要不一致")
-            except (ValueError, TypeError, AttributeError):
-                problems.append(f"任务 {ident}: 审核摘要不可解析")
-        for name, raw, digest in templates:
-            try:
-                if _sha(raw.encode("utf-8")) != digest:
-                    raise ValueError("sha mismatch")
-                layout_from_json(raw.encode("utf-8"))
-            except (ValueError, TypeError):
-                problems.append(f"模板 {name}: 规则或摘要无效")
-        counts = {name: conn.execute(f"SELECT count(*) FROM {name}").fetchone()[0]
-                  for name in ("jobs", "job_files", "review_events", "templates", "imported_files")}
-        schema = conn.execute("PRAGMA user_version").fetchone()[0]
-    return {"ok": checks == ["ok"] and not fk_errors and not problems and schema == DB_VERSION,
-            "sqlite_integrity": checks, "foreign_key_errors": len(fk_errors), "logical_errors": problems,
-            "schema_version": schema, "counts": counts}
+                "warnings": [], "schema_version": None, "counts": empty_counts}
+    problems: list[str] = []
+    warnings: list[str] = []
+    counts = dict(empty_counts)
+    try:
+        with closing(sqlite3.connect(target.as_uri() + "?mode=ro", uri=True, timeout=5)) as conn:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            checks = [row[0] for row in conn.execute("PRAGMA integrity_check").fetchall()]
+            fk_errors = conn.execute("PRAGMA foreign_key_check").fetchall()
+            if checks != ["ok"]:
+                problems.append("SQLite 物理完整性检查失败")
+            if fk_errors:
+                problems.append(f"存在 {len(fk_errors)} 条外键错误")
+            tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            for table in _REQUIRED_COLUMNS:
+                if table not in tables:
+                    problems.append(f"数据库结构缺少表：{table}")
+            schema_columns = {}
+            for table in set(_REQUIRED_COLUMNS) & tables:
+                schema_columns[table] = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+                missing = _REQUIRED_COLUMNS[table] - schema_columns[table]
+                if missing:
+                    problems.append(f"数据库结构不兼容：{table} 缺少字段 {', '.join(sorted(missing))}")
+            if version not in (1, DB_VERSION):
+                problems.append(f"数据库版本 {version} 不受支持")
+            required = set(_REQUIRED_COLUMNS).issubset(tables) and all(
+                _REQUIRED_COLUMNS[t] <= schema_columns.get(t, set()) for t in _REQUIRED_COLUMNS)
+            if required and version in (1, DB_VERSION):
+                try:
+                    _validate_schema(conn, require_review_guards=(version == DB_VERSION))
+                except RuntimeError as exc:
+                    problems.append(str(exc))
+            if version == 1 and not problems:
+                warnings.append("数据库结构 V1 有效；下一次正常打开时会升级至 V2 审核历史保护结构")
+            if required:
+                rows = conn.execute("""SELECT id,created_utc,updated_utc,platform,template,input_sha256,
+                    generated,failed_generation,stage,record_json,revision FROM jobs""").fetchall()
+                audit_entries = conn.execute("SELECT event_id,job_id,created_utc,reviewer,review_json,report_sha256 FROM review_events ORDER BY event_id").fetchall()
+                templates = conn.execute("SELECT name_key,name,layout_json,layout_sha256,updated_utc FROM templates").fetchall()
+                imported = conn.execute("SELECT origin,kind,sha256,imported_utc FROM imported_files").fetchall()
+                jobs_by_id = {}
+                for ident, created, updated, platform, template, fingerprint, generated, failed, stage, raw, revision in rows:
+                    try:
+                        obj = json.loads(raw)
+                        _id, files = _validate_job(obj, allow_legacy_review=True)
+                        jobs_by_id[ident] = (obj, files)
+                        stored = conn.execute("SELECT name,sha256 FROM job_files WHERE job_id=? ORDER BY name", (ident,)).fetchall()
+                        denormalized = (obj.get("created_utc"), obj.get("updated_utc"), obj.get("platform"),
+                                        obj.get("template"), obj.get("input_sha256"), obj.get("generated"),
+                                        obj.get("failed_generation"), obj.get("stage"))
+                        sql_values = (created, updated, platform, template, fingerprint, generated, failed, stage)
+                        if (_id != ident or sorted(files) != stored or len(files) != generated or revision < 1
+                            or denormalized != sql_values):
+                            problems.append(f"任务 {ident}: 文件、冗余字段或元数据不一致")
+                        if obj.get("review") is not None and obj["review"].get("schema_version") is None:
+                            warnings.append(f"任务 {ident}: 历史审核缺少逐项检查记录，发布前必须重新审核")
+                    except (ValueError, TypeError, KeyError, AttributeError):
+                        problems.append(f"任务 {ident}: JSON 内容异常")
+                for event_id, job_id, event_time, reviewer, raw, digest in audit_entries:
+                    try:
+                        event = json.loads(raw)
+                        datetime.fromisoformat(event_time.replace("Z", "+00:00"))
+                        job_data = jobs_by_id.get(job_id)
+                        if (_sha(raw.encode("utf-8")) != digest or not isinstance(event, dict)
+                            or event.get("reviewer") != reviewer or not reviewer.strip() or len(reviewer) > 80
+                            or not HASH.fullmatch(digest) or job_data is None):
+                            problems.append(f"审核事件 {event_id}: 摘要或关联信息不一致")
+                            continue
+                        job_obj, job_pairs = job_data
+                        legacy_event = _validate_review_summary(event, job_pairs, job_obj["failed_generation"],
+                                                                allow_legacy_review=True)
+                        if legacy_event:
+                            warnings.append(f"审核事件 {event_id}: 历史审核缺少逐项检查记录")
+                    except (ValueError, TypeError, AttributeError, KeyError):
+                        problems.append(f"审核事件 {event_id}: 数据损坏或审核语义无效")
+                for ident, (obj, _) in jobs_by_id.items():
+                    try:
+                        review = obj.get("review")
+                        latest = conn.execute("SELECT review_json FROM review_events WHERE job_id=? ORDER BY event_id DESC LIMIT 1", (ident,)).fetchone()
+                        if (review is None) != (latest is None) or (review is not None and _json(review) != latest[0]):
+                            problems.append(f"任务 {ident}: 最新审核历史与任务摘要不一致")
+                    except (ValueError, TypeError, AttributeError):
+                        problems.append(f"任务 {ident}: 审核摘要不可解析")
+                if len(templates) > MAX_TEMPLATES:
+                    problems.append(f"模板数量超过上限 {MAX_TEMPLATES}")
+                for name_key, name, raw, digest, updated_utc in templates:
+                    try:
+                        if (template_name(name) != name or name_key != name.casefold()
+                            or _sha(raw.encode("utf-8")) != digest or not HASH.fullmatch(digest)):
+                            raise ValueError("名称或 SHA256 不一致")
+                        datetime.fromisoformat(updated_utc.replace("Z", "+00:00"))
+                        layout_from_json(raw.encode("utf-8"))
+                    except (ValueError, TypeError):
+                        problems.append(f"模板 {name}: 名称、更新时间、规则或摘要无效")
+                for origin, kind, digest, imported_utc in imported:
+                    try:
+                        if (not isinstance(origin, str) or not origin or kind not in {"job", "template"}
+                            or not HASH.fullmatch(digest)):
+                            raise ValueError("导入标记字段无效")
+                        datetime.fromisoformat(imported_utc.replace("Z", "+00:00"))
+                    except (ValueError, TypeError, AttributeError):
+                        problems.append(f"导入记录 {origin}: 来源、类型、摘要或时间无效")
+                for name in counts:
+                    if name in tables:
+                        counts[name] = conn.execute(f"SELECT count(*) FROM {name}").fetchone()[0]
+            schema_supported = version in (1, DB_VERSION) and required
+            return {"ok": checks == ["ok"] and not fk_errors and not problems and schema_supported,
+                    "sqlite_integrity": checks, "foreign_key_errors": len(fk_errors),
+                    "logical_errors": problems, "warnings": sorted(set(warnings)),
+                    "schema_version": version, "counts": counts}
+    except (sqlite3.Error, OSError, ValueError) as exc:
+        return {"ok": False, "sqlite_integrity": ["check failed"], "foreign_key_errors": 0,
+                "logical_errors": [f"数据库读取失败：{exc}"], "warnings": [],
+                "schema_version": None, "counts": counts}
 
 
 def _snapshot(source: Path, destination: Path, *, overwrite: bool) -> Path:
@@ -457,7 +678,8 @@ def _snapshot(source: Path, destination: Path, *, overwrite: bool) -> Path:
     temp = Path(tempname)
     try:
         with closing(sqlite3.connect(str(source))) as origin:
-            if origin.execute("PRAGMA user_version").fetchone()[0] != DB_VERSION:
+            source_version = origin.execute("PRAGMA user_version").fetchone()[0]
+            if source_version not in (1, DB_VERSION):
                 raise ValueError("源数据库版本不受支持")
             if origin.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise ValueError("源数据库完整性检查失败")
@@ -466,6 +688,8 @@ def _snapshot(source: Path, destination: Path, *, overwrite: bool) -> Path:
         with closing(sqlite3.connect(str(temp))) as check:
             if check.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise ValueError("备份数据库完整性检查失败")
+        with open_database(temp):
+            pass
         if not integrity_report(temp)["ok"]:
             raise ValueError("备份业务摘要校验失败，拒绝覆盖目标数据库")
         os.replace(temp, destination)

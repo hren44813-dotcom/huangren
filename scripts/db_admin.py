@@ -15,7 +15,7 @@ from ecom_images.database_v9 import (  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="huangren SQLite 数据库管理（仅本地元数据）")
+    parser = argparse.ArgumentParser(description="huangren SQLite 数据库管理（V10 schema，纯本地元数据）")
     parser.add_argument("--database", type=Path, default=DEFAULT_DB, help="数据库文件位置")
     action = parser.add_subparsers(dest="action", required=True)
     action.add_parser("init", help="显式初始化空数据库（不会导入旧记录）")

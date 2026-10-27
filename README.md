@@ -190,35 +190,16 @@ V6 把原有 V2–V5 SKU 功能整理为四步：
 - 完整风险及测试范围：见 [V8 离线验收与安全报告](docs/test-and-security-v8.md)。未完成真实 Streamlit 浏览器与平台上架验收。
 
 
-## V9 本机 SQLite 数据库
+## V10 本机 SQLite 数据库（schema V2）
 
-任务流水、SKU 模板、审核历史与导入指纹统一保存在 `.local/huangren.sqlite3`；数据库不保存商品原图或第三方 API 密钥，也不会自动跨电脑同步。支持 JSON 历史迁移、完整性检查、一致性备份与停止应用后的恢复。
+任务流水、SKU 模板、审核历史与导入指纹统一保存在 .local/huangren.sqlite3；数据库不保存商品原图或第三方 API 密钥，也不会自动跨电脑同步。V10 加强未知数据库拒绝接管、表/主外键检查、审核摘要语义校验、审核历史 SQL 保护、旧审核复核标记、只读健康检查及旧版备份迁移。
 
-```bash
-python scripts/db_admin.py check
-python scripts/db_admin.py import-legacy --dry-run
-python scripts/db_admin.py import-legacy
-python scripts/db_admin.py backup --output backups/huangren.sqlite3
-```
+    python scripts/db_admin.py check
+    python scripts/db_admin.py import-legacy --dry-run
+    python scripts/db_admin.py import-legacy
+    python scripts/db_admin.py backup --output backups/huangren.sqlite3
+    python -m unittest discover -s tests -v
 
-详细说明：[V9 数据库维护指南](docs/database-v9.md)。
-
-
-## V9 本机数据库（SQLite）与运营任务留档
-
-V9 将新建的批次任务、逐张文件 SHA256、审核历史及常用 SKU 模板统一保存在 `.local/huangren.sqlite3`。
-支持同机事务与版本冲突检测、数据库完整性校验、旧 V5–V8 JSON 明确迁移、SQLite 一致性备份和离线恢复。
-**不会同步到 GitHub、不会上传商品原图或 API Key，也不等于多人权限审批平台。**
-
-```bash
-# 首次使用时显式初始化，然后检查数据库
-python scripts/db_admin.py init
-python scripts/db_admin.py check
-# 先检查旧任务与模板可否迁移，再执行正式迁移（不删除原 JSON）
-python scripts/db_admin.py import-legacy --dry-run
-python scripts/db_admin.py import-legacy
-# 生成一致性备份
-python scripts/db_admin.py backup --output backups/huangren.sqlite3
-```
-
-恢复数据库前必须关闭 Streamlit 等程序，详见 [V9 数据库使用与安全说明](docs/database-v9.md) 与 [V9 数据库审查与问题整改报告](docs/database-audit-v9.md)。
+- 维护指南：[V10 数据库检查、迁移、备份与恢复](docs/database-v10.md)
+- 本轮审查记录：[V10 数据库审查报告](docs/database-audit-v10.md)
+- 历史指南保留：[V9 数据库说明](docs/database-v9.md)

@@ -198,6 +198,7 @@ class DatabaseV9Tests(unittest.TestCase):
         reviewed = record_review(self.record, self.images, report, reviewer="运营A")
         save_job(self.db, reviewed, expected_revision=1)
         with open_database(self.db) as conn:
+            conn.execute("DROP TRIGGER review_events_no_update")
             conn.execute("UPDATE review_events SET review_json=?", ('{"reviewer":"伪造"}',))
         status = integrity_report(self.db)
         self.assertFalse(status["ok"])
@@ -256,6 +257,7 @@ class OperationalDatabaseTests(unittest.TestCase):
         approved = record_review(record, files, audit_reviews(files, rows), reviewer="审核员")
         save_job(self.db, approved, expected_revision=1)
         with open_database(self.db) as conn:
+            conn.execute("DROP TRIGGER review_events_no_update")
             conn.execute("UPDATE review_events SET report_sha256=?", ("0"*64,))
         self.assertFalse(integrity_report(self.db)["ok"])
         with self.assertRaisesRegex(ValueError, "完整性"):

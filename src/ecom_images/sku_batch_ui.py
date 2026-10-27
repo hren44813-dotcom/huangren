@@ -134,7 +134,7 @@ def render(st, platform: str) -> None:
 
         if job_record and len(saved) > 3 and saved[3] is not None:
             render_sku_review(st, result, job_record, saved[3])
-    with st.expander("V9 SQLite 数据库 · 任务流水、完整性与备份", expanded=False):
+    with st.expander("V10 SQLite 数据库 · 任务流水、完整性与备份", expanded=False):
         try:
             history = list_jobs(DEFAULT_DB, limit=40)
             if history:
