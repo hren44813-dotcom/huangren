@@ -6,6 +6,7 @@ from pathlib import Path
 from .session_guard import input_fingerprint
 from .sku_batch import build_sku_batch, read_sku_rows, unpack_image_zip
 from .sku_template_v3 import THEMES
+from .sku_layout_ui import configure as configure_v4
 from .workflow import UploadedPicture
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" / "sku_import_template.xlsx"
@@ -13,16 +14,18 @@ TEMPLATE_V3_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" 
 
 
 def render(st, platform: str) -> None:
-    st.subheader("Excel 批量 SKU + 三套工业风模板（V3）")
-    template_choice = st.selectbox("选择模板版式", ["V2 经典 SKU 版式", *THEMES], key="sku_template_style")
-    selected_style = None if template_choice == "V2 经典 SKU 版式" else template_choice
-    st.caption("V3 版式支持上传单独的原尺寸图，参数和标注不会自动推算或重画；蓝白 / 黄黑 / 灰白预设为规则模板，并非任意图片的像素级复刻。")
+    st.subheader("Excel 批量 SKU · V2 / V3 / V4 自定义版式")
+    template_choice = st.selectbox("选择模板版式", ["V2 经典 SKU 版式", *THEMES, "V4 自定义参考模板布局"], key="sku_template_style")
+    using_v4 = template_choice == "V4 自定义参考模板布局"
+    selected_style = None if template_choice == "V2 经典 SKU 版式" or using_v4 else template_choice
+    custom_layout, clean_template, layout_payload = (configure_v4(st) if using_v4 else (None, None, b""))
+    st.caption("V3 有三套固定工业风预设；V4 支持手动校准标题、产品、原尺寸图和参数表区域，不能自动去除参考图中的旧商品。")
     st.caption("仅将已核实的尺寸与材质绘制到原产品照片上；不改变孔位、产品比例和机械结构。适用于拉手、锁具、铰链、阻尼转轴等产品。")
-    chosen_template = TEMPLATE_V3_PATH if selected_style else TEMPLATE_PATH
+    chosen_template = TEMPLATE_V3_PATH if (selected_style or using_v4) else TEMPLATE_PATH
     st.download_button("📥 下载 Excel SKU 填写模板", chosen_template.read_bytes(),
-                       file_name="工业五金批量SKU导入模板_V3.xlsx" if selected_style else "工业五金批量SKU导入模板.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                       file_name="工业五金批量SKU导入模板_V3.xlsx" if (selected_style or using_v4) else "工业五金批量SKU导入模板.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                        use_container_width=True)
-    st.info("Excel 中一行对应一个 SKU：填写 SKU编码、商品名称、图片文件名；V3 可选填写『尺寸图文件名』并上传对应原尺寸图。所有图片按完整文件名精确匹配，缺图不替换；空值不推断。")
+    st.info("Excel 中一行对应一个 SKU：填写 SKU编码、商品名称、图片文件名；V3/V4 可选填写『尺寸图文件名』并上传对应原尺寸图。所有图片按完整文件名精确匹配，缺图不替换；空值不推断。")
     excel_file = st.file_uploader("① 上传已填写的 SKU Excel（.xlsx）", type=["xlsx"], key="excel_sku_file")
     source_method = st.radio("② 上传产品原图的方式", ["图片 ZIP 压缩包", "直接上传多张图片"], horizontal=True, key="sku_source")
     image_zip = None
@@ -45,16 +48,21 @@ def render(st, platform: str) -> None:
     fingerprint = input_fingerprint(
         [UploadedPicture("sku_excel.xlsx", excel_bytes),
          *([UploadedPicture("sku_images.zip", zip_bytes)] if source_method == "图片 ZIP 压缩包" else uploaded_pictures)],
-        {"platform": platform, "workflow": "sku_excel", "source": source_method, "template_style": template_choice})
+        {"platform": platform, "workflow": "sku_excel", "source": source_method, "template_style": template_choice,
+         "v4_layout": layout_payload.decode("utf-8") if layout_payload else ""},
+        clean_template)
     if st.button("③ 批量制作 SKU 图", type="primary", use_container_width=True, key="build_sku_excel"):
         st.session_state.pop("sku_excel_result", None)
-        if not excel_bytes or (not zip_bytes and not uploaded_pictures):
+        if using_v4 and custom_layout is None:
+            st.error("V4 布局坐标无效，请先调整无重叠的区域")
+        elif not excel_bytes or (not zip_bytes and not uploaded_pictures):
             st.error("请先上传 Excel 和产品图片")
         else:
             try:
                 with st.spinner("正在逐行生成 SKU 图及检查导出尺寸..."):
                     pictures = unpack_image_zip(zip_bytes) if zip_bytes else uploaded_pictures
-                    result = build_sku_batch(excel_bytes, pictures, template_style=selected_style)
+                    result = build_sku_batch(excel_bytes, pictures, template_style=selected_style,
+                                             custom_layout=custom_layout, clean_template=clean_template)
                 st.session_state["sku_excel_result"] = (fingerprint, result)
             except (ValueError, RuntimeError, OSError) as exc:
                 st.error(f"批量制作失败：{exc}")

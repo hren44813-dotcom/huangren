@@ -248,9 +248,18 @@ def _specs(row: dict[str, str]) -> list[dict[str, str]]:
     return specs
 
 
-def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, template_style: str | None = None) -> SkuBatchResult:
+def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, template_style: str | None = None,
+                    custom_layout: dict[str, Any] | None = None,
+                    clean_template: UploadedPicture | None = None) -> SkuBatchResult:
     """每行独立生成，失败行记录原因；不以其他图片替代缺失产品图。"""
     from .sku_template_v3 import THEMES, render_sku_template
+    from .sku_layout_v4 import render_custom_sku, validate_layout
+    if custom_layout is not None:
+        if template_style is not None:
+            raise ValueError("自定义 V4 布局不能同时使用 V3 固定预设")
+        validate_layout(custom_layout)
+    elif clean_template is not None:
+        raise ValueError("只有 V4 自定义布局才能使用净背景")
     if template_style is not None and template_style not in THEMES:
         raise ValueError("无效的 SKU 风格预设")
     rows = read_sku_rows(excel_data)
@@ -287,7 +296,7 @@ def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, templ
                 if pic is None:
                     raise ValueError("找不到对应产品图片，请核对图片文件名和扩展名")
                 validate_upload(pic)
-                if template_style is None:
+                if template_style is None and custom_layout is None:
                     accent = _valid_hex(data["色块颜色"] or "#0D7FF4", "色块颜色")
                     color = _valid_hex(data["标题字色"] or ("#000000" if accent.upper() in {"#F5C518", "#FFFF00"} else "#FFFFFF"), "标题字色")
                 else:
@@ -300,7 +309,7 @@ def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, templ
                 output_name = f"SKU_{stem}.jpg"
                 target = work / output_name
                 specs = _specs(data)
-                if template_style is None:
+                if template_style is None and custom_layout is None:
                     meta = build_job({
                         "mode": "sku", "source": str(source), "output": str(target),
                         "title": data["商品名称"].strip(), "specs": specs,
@@ -316,10 +325,16 @@ def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, templ
                         dimension_picture = image_lookup.get(drawing_name.casefold())
                         if dimension_picture is None:
                             raise ValueError("找不到此 SKU 对应的原尺寸图，不以其他图片替代")
-                    image_data, meta = render_sku_template(
-                        pic, drawing=dimension_picture, title=data["商品名称"].strip(),
-                        specs=specs, style=template_style,
-                    )
+                    if custom_layout is not None:
+                        image_data, meta = render_custom_sku(
+                            pic, drawing=dimension_picture, title=data["商品名称"].strip(),
+                            specs=specs, layout=custom_layout, clean_template=clean_template,
+                        )
+                    else:
+                        image_data, meta = render_sku_template(
+                            pic, drawing=dimension_picture, title=data["商品名称"].strip(),
+                            specs=specs, style=template_style,
+                        )
                 audit = audit_export(output_name, image_data, "sku")
                 if not audit["auto_pass"]:
                     raise ValueError("尺寸或格式自动质检未通过")
