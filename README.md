@@ -208,3 +208,23 @@ V6 把原有 V2–V5 SKU 功能整理为四步：
 ## 数据库任务查询 V11（只读）
 
 中文界面新增「⑤ 数据库运营查询（只读）」标签：按平台、任务阶段、UTC 日期和模板检索，分页展示历史任务，下载当前页 CSV，核对单个任务的审核事件摘要；不修改数据库。命令行使用 `python scripts/db_report.py summary` 或 `python scripts/db_report.py jobs --page 1 --format csv`。详细说明见 [V11 使用指南](docs/database-reporting-v11.md)。完整性与备份恢复仍使用 `scripts/db_admin.py`；不要把 SQLite 业务库、审核报表或图片上传到公开仓库。
+
+
+## 数据库商品档案 V12（多店铺 / 商品 / SKU / 素材）
+
+在 V10/V11 任务及审核数据库上，新增独立的商品档案表，支持**店铺 → 商品 → SKU → 素材摘要 → 制图任务关联**，保留旧任务数据且不自动推断 SKU 归属。中文界面第 ⑥ 标签支持下载 CSV 模板、先预演、确认后整批导入和按店铺检索。
+
+```bash
+# 运行旧数据库检查，正式扩表前备份数据库
+python scripts/db_admin.py check
+python scripts/db_admin.py backup --output backups/before-v12.sqlite3
+# 增量初始化（不会删除旧表）
+python scripts/catalog_admin.py init
+python scripts/catalog_admin.py check
+python scripts/catalog_admin.py template --output sku_catalog.csv
+python scripts/catalog_admin.py import-csv --input sku_catalog.csv
+# 仅在预演核对后执行写入
+python scripts/catalog_admin.py import-csv --input sku_catalog.csv --apply
+```
+
+详见 [V12 数据库结构与完整指南](docs/database-catalog-v12.md) 和 [部署验收表](docs/database-v12-checklist.md)。数据库元数据不包含商品原图；本地 SQLite 不是多人权限平台。

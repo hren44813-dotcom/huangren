@@ -18,6 +18,7 @@ from ecom_images.session_guard import input_fingerprint  # noqa: E402
 from ecom_images.main_direction_ui import render as render_main_directions  # noqa: E402
 from ecom_images.sku_batch_ui import render as render_sku_batch  # noqa: E402
 from ecom_images.db_reporting_ui_v11 import render as render_db_reporting  # noqa: E402
+from ecom_images.catalog_ui_v12 import render as render_catalog_v12  # noqa: E402
 from ecom_images.workflow import (  # noqa: E402
     UploadedPicture, planned_count, produce_images,
 )
@@ -30,7 +31,7 @@ st.info("标准制图在当前运行环境离线完成，不会将商品照片�
 platform = st.selectbox("目标平台", ["淘宝 / 天猫", "阿里国际站"])
 st.caption("平台选择用于区分工作流程；预设尺寸是制图模板，不代表平台实时审核规则。发布前请核对各平台最新要求。")
 
-direction_tab, standard, sku_tab, ai_tab, db_tab = st.tabs(["① 主图方向策划", "② 标准主图 / SKU 批量制作", "③ Excel SKU / V6 制图审核流程", "④ 星河 AI 详情页（可选）", "⑤ 数据库运营查询（只读）"])
+direction_tab, standard, sku_tab, ai_tab, db_tab, catalog_tab = st.tabs(["① 主图方向策划", "② 标准主图 / SKU 批量制作", "③ Excel SKU / V6 制图审核流程", "④ 星河 AI 详情页（可选）", "⑤ 数据库运营查询（只读）", "⑥ 商品 / SKU 档案"])
 
 with direction_tab:
     render_main_directions(st, platform)
@@ -140,6 +141,9 @@ with sku_tab:
 
 with db_tab:
     render_db_reporting(st)
+
+with catalog_tab:
+    render_catalog_v12(st)
 
 with ai_tab:
     st.warning("该功能通过仓库内的星河技能脚本调用第三方 API，会上传你选择的产品图和提示词，可能产生费用；并非离线功能。AI 生成的产品结构、尺寸和文案必须人工复核。")
