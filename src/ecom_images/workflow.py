@@ -40,13 +40,25 @@ class BatchResult:
     images: list[tuple[str, bytes, dict[str, Any]]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
+    def quality_audits(self) -> list[dict[str, Any]]:
+        from .quality import audit_export
+        return [audit_export(name, data, str(meta["mode"])) for name, data, meta in self.images]
+
     def zip_bytes(self) -> bytes:
         memory = io.BytesIO()
         manifest = {"success": [meta for _, _, meta in self.images], "errors": self.errors}
+        audits = self.quality_audits()
         with zipfile.ZipFile(memory, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
             for name, data, _ in self.images:
                 archive.writestr(name, data)
             archive.writestr("report.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+            archive.writestr("quality_report.json", json.dumps({
+                "summary": {"auto_pass": sum(a["auto_pass"] for a in audits),
+                            "auto_fail": sum(not a["auto_pass"] for a in audits),
+                            "manual_review_pending": len(audits)},
+                "audits": audits,
+                "note": "自动通过仅表示文件可读、输出尺寸/格式等机器可测指标合格；产品一致性、文本真实性与平台审核须人工复核。",
+            }, ensure_ascii=False, indent=2))
         return memory.getvalue()
 
 

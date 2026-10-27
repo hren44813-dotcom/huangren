@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from ecom_images.ai_bridge import generate_xinghe  # noqa: E402
+from ecom_images.session_guard import input_fingerprint  # noqa: E402
 from ecom_images.main_direction_ui import render as render_main_directions  # noqa: E402
 from ecom_images.workflow import (  # noqa: E402
     UploadedPicture, planned_count, produce_images,
@@ -60,7 +61,16 @@ with standard:
         st.markdown("**SKU 参数（完全由你填写，不自动编造）**")
         spec_names = ["型号", "材质", "尺寸/孔距", "表面处理"]
         spec_values = [st.text_input(f"{name}（可留空）", key=f"spec_{i}") for i, name in enumerate(spec_names)]
-    count = len(uploaded or [])
+    inputs = [UploadedPicture(f.name, f.getvalue()) for f in (uploaded or [])]
+    logo_picture = UploadedPicture(uploaded_logo.name, uploaded_logo.getvalue()) if uploaded_logo else None
+    chosen_modes = [display_modes[x] for x in choices]
+    specs = [{"label": n, "value": v.strip()} for n, v in zip(spec_names, spec_values) if v.strip()]
+    parameters = {"platform": platform, "modes": chosen_modes, "variants": variants,
+                  "title": title, "subtitle": subtitle, "brand": brand, "label": label,
+                  "selling_points": points_text.splitlines(), "specs": specs,
+                  "accent": accent, "background": background}
+    current_fingerprint = input_fingerprint(inputs, parameters, logo_picture)
+    count = len(inputs)
     if choices and count:
         try:
             qty = planned_count(count, [display_modes[x] for x in choices], variants)
@@ -73,21 +83,25 @@ with standard:
             st.error("请先上传至少一张产品图片")
         else:
             try:
-                pics = [UploadedPicture(f.name, f.getvalue()) for f in uploaded]
-                logo = UploadedPicture(uploaded_logo.name, uploaded_logo.getvalue()) if uploaded_logo else None
-                specs = [{"label": n, "value": v.strip()} for n, v in zip(spec_names, spec_values) if v.strip()]
+                st.session_state.pop("offline_result", None)
                 with st.spinner("正在生成与验证图片…"):
                     result = produce_images(
-                        pics, [display_modes[x] for x in choices], variants, title=title,
+                        inputs, chosen_modes, variants, title=title,
                         subtitle=subtitle, brand=brand, label=label,
                         selling_points=points_text.splitlines(), specs=specs,
-                        accent=accent, background=background, logo=logo,
+                        accent=accent, background=background, logo=logo_picture,
                     )
-                st.session_state["offline_result"] = result
+                st.session_state["offline_result"] = (current_fingerprint, result)
             except (ValueError, OSError, RuntimeError) as exc:
                 st.error(f"制作失败：{exc}")
 
-    result = st.session_state.get("offline_result")
+    cached_result = st.session_state.get("offline_result")
+    result = None
+    if cached_result:
+        if not isinstance(cached_result, tuple) or len(cached_result) != 2 or cached_result[0] != current_fingerprint:
+            st.warning("输入图片、参数或平台已变化；旧批次结果已隐藏，请重新点击生成，防止下载错误 SKU。")
+        else:
+            result = cached_result[1]
     if result:
         st.subheader(f"生成结果：{len(result.images)} 张成功，{len(result.errors)} 项失败")
         if result.errors:
@@ -95,6 +109,18 @@ with standard:
                 for err in result.errors:
                     st.error(err)
         if result.images:
+            audits = result.quality_audits()
+            auto_pass = sum(a["auto_pass"] for a in audits)
+            st.caption(f"机器质检：{auto_pass}/{len(audits)} 张通过尺寸、格式等检查；产品结构、文案真实性及平台准入仍需人工复核。")
+            if auto_pass < len(audits):
+                with st.expander("查看自动质检未通过项目", expanded=True):
+                    for audit in audits:
+                        if not audit["auto_pass"]:
+                            st.error(f"{audit['file']}：" + "；".join(c["item"] for c in audit["checks"] if not c["passed"]))
+            with st.expander("发布前人工检查清单（所有图片均待验收）"):
+                st.markdown("- [ ] 与产品原图逐一核对孔位、结构、配件、比例与表面细节")
+                st.markdown("- [ ] 核对参数、功能、卖点与实际资料一致")
+                st.markdown("- [ ] 核对手机端文字清晰度、遮挡和目标平台最新规则")
             st.download_button("📦 下载全部图片 ZIP（含质量报告）", data=result.zip_bytes(),
                                file_name="ecommerce_images.zip", mime="application/zip", use_container_width=True)
             for first in range(0, len(result.images), 3):

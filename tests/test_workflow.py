@@ -55,9 +55,13 @@ class WorkflowTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(result.zip_bytes())) as archive:
             filenames = archive.namelist()
             self.assertIn("report.json", filenames)
-            self.assertEqual(len(filenames), 4)
+            self.assertIn("quality_report.json", filenames)
+            self.assertEqual(len(filenames), 5)
             report = json.loads(archive.read("report.json"))
             self.assertEqual(len(report["success"]), 3)
+            audits = json.loads(archive.read("quality_report.json"))
+            self.assertEqual(audits["summary"]["auto_pass"], 3)
+            self.assertEqual(audits["summary"]["manual_review_pending"], 3)
 
     def test_incomplete_input_does_not_stop_other_images(self):
         result = produce_images([picture("good.png"), UploadedPicture("bad.jpg", b"bad")],

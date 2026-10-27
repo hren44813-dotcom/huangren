@@ -1,0 +1,29 @@
+name: Python tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install image dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Syntax check
+        run: python -m compileall -q src scripts tests app.py
+      - name: Run offline tests (no API credentials)
+        run: python -m unittest discover -s tests -v
