@@ -55,6 +55,8 @@ def audit_reviews(
         note = entry.get("备注", "")
         if not isinstance(note, str) or len(note) > 500:
             raise ValueError(f"{name}：备注必须是500字以内的文本")
+        if state == "返工" and not note.strip():
+            raise ValueError(f"{name}：返工项目必须填写问题及修改建议")
         counts[state] += 1
         reviewed.append({"file": name, "image_sha256": hashlib.sha256(expected[name]).hexdigest(),
                          "status": state, "checks": fields, "note": note.strip()})
@@ -82,7 +84,40 @@ def review_csv(report: dict[str, Any]) -> bytes:
     return ("\ufeff" + out.getvalue()).encode("utf-8")
 
 
+def verify_review_report(images: list[tuple[str, bytes, dict]], report: dict[str, Any]) -> None:
+    """防止图片被替换、旧审核报告回放或修改状态后仍被导出。"""
+    if not isinstance(report, dict) or report.get("schema_version") != 1:
+        raise ValueError("审核报告格式无效")
+    rows = report.get("rows")
+    if not isinstance(rows, list):
+        raise ValueError("审核报告缺少逐张记录")
+    edited = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("checks"), dict):
+            raise ValueError("审核报告数据异常")
+        edited.append({"文件名": row.get("file"), "审核结论": row.get("status"),
+                       "备注": row.get("note"),
+                       **{field: row["checks"].get(field) for field in FIELDS}})
+    failures = report.get("failed_generation")
+    if type(failures) is not int:
+        raise ValueError("失败数量无效")
+    checked = audit_reviews(images, edited, failed_generation=failures)
+    if (checked["counts"] != report.get("counts") or
+        checked["ready_to_publish"] != report.get("ready_to_publish") or
+        [(r["file"], r["image_sha256"], r["status"], r["checks"], r["note"]) for r in checked["rows"]] !=
+        [(r.get("file"), r.get("image_sha256"), r.get("status"), r.get("checks"), r.get("note")) for r in rows]):
+        raise ValueError("图片内容、审核状态或校验值与审核报告不一致，必须重新审核")
+
+
+def review_signature(report: dict[str, Any]) -> str:
+    """编辑审核表任意一项后签名变化；无须把生成时间算入。"""
+    return hashlib.sha256(json.dumps({"rows": report["rows"],
+                                      "failed_generation": report["failed_generation"]},
+                                     ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
 def review_zip(images: list[tuple[str, bytes, dict]], report: dict[str, Any]) -> bytes:
+    verify_review_report(images, report)
     approved = {r["file"] for r in report["rows"] if r["status"] == "通过"}
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
@@ -90,5 +125,7 @@ def review_zip(images: list[tuple[str, bytes, dict]], report: dict[str, Any]) ->
         z.writestr("review_report.csv", review_csv(report))
         for name, data, _ in images:
             if name in approved:
+                if name != name.replace("\\", "/").split("/")[-1] or name.startswith("."):
+                    raise ValueError("审核通过的文件名不安全")
                 z.writestr("approved/" + name, data)
     return out.getvalue()

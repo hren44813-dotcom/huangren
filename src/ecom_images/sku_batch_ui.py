@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import uuid
 
 from .session_guard import input_fingerprint
 from .sku_batch import build_sku_batch, read_sku_rows, unpack_image_zip
@@ -10,13 +9,17 @@ from .sku_template_v3 import THEMES
 from .sku_layout_ui import configure as configure_v4
 from .workflow import UploadedPicture
 from .sku_review_ui import render as render_sku_review
+from .sku_preflight_v6 import inspect_batch
+from .production_ledger_v6 import list_records, new_record, save_record
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" / "sku_import_template.xlsx"
 TEMPLATE_V3_PATH = Path(__file__).resolve().parents[2] / "assets" / "templates" / "sku_import_template_v3.xlsx"
+HISTORY = Path(__file__).resolve().parents[2] / ".local" / "production_runs"
 
 
 def render(st, platform: str) -> None:
-    st.subheader("Excel 批量 SKU · V2 / V3 / V4 / V5 模板库与人工审核")
+    st.subheader("Excel 批量 SKU · V6 四步工作流（兼容 V2–V5）")
+    st.caption("流程：①资料预检查 → ②批量制图 → ③人工审核 → ④审核留档/导出。每步绑定本次输入，不跨批复用审核。")
     template_choice = st.selectbox("选择模板版式", ["V2 经典 SKU 版式", *THEMES, "V5 自定义布局与模板库（兼容V4）"], key="sku_template_style")
     using_v4 = template_choice == "V5 自定义布局与模板库（兼容V4）"
     selected_style = None if template_choice == "V2 经典 SKU 版式" or using_v4 else template_choice
@@ -27,7 +30,7 @@ def render(st, platform: str) -> None:
     st.download_button("📥 下载 Excel SKU 填写模板", chosen_template.read_bytes(),
                        file_name="工业五金批量SKU导入模板_V3.xlsx" if (selected_style or using_v4) else "工业五金批量SKU导入模板.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                        use_container_width=True)
-    st.info("Excel 中一行对应一个 SKU：填写 SKU编码、商品名称、图片文件名；V3/V4 可选填写『尺寸图文件名』并上传对应原尺寸图。所有图片按完整文件名精确匹配，缺图不替换；空值不推断。")
+    st.info("Excel 中一行对应一个 SKU：填写 SKU编码、商品名称、图片文件名；V3/V4/V5/V6 可选填写『尺寸图文件名』并上传对应原尺寸图。所有图片按完整文件名精确匹配，缺图不替换；空值不推断。")
     excel_file = st.file_uploader("① 上传已填写的 SKU Excel（.xlsx）", type=["xlsx"], key="excel_sku_file")
     source_method = st.radio("② 上传产品原图的方式", ["图片 ZIP 压缩包", "直接上传多张图片"], horizontal=True, key="sku_source")
     image_zip = None
@@ -53,7 +56,34 @@ def render(st, platform: str) -> None:
         {"platform": platform, "workflow": "sku_excel", "source": source_method, "template_style": template_choice,
          "v4_layout": layout_payload.decode("utf-8") if layout_payload else ""},
         clean_template)
-    if st.button("③ 批量制作 SKU 图", type="primary", use_container_width=True, key="build_sku_excel"):
+    # 第一关：只有当前输入快照通过预检查后才能运行制图；有错误的行须显式选择部分制图。
+    if st.button("① 预检查 SKU 清单和图片匹配", key="sku_v6_check", use_container_width=True):
+        st.session_state.pop("sku_preflight_v6", None)
+        if using_v4 and custom_layout is None:
+            st.error("请先修复模板布局越界或重叠问题。")
+        elif not excel_bytes or (not zip_bytes and not uploaded_pictures):
+            st.warning("先上传 Excel 和产品图片，再开始预检查。")
+        else:
+            try:
+                pictures = unpack_image_zip(zip_bytes) if zip_bytes else uploaded_pictures
+                preview_result = inspect_batch(excel_bytes, pictures, template_style=selected_style,
+                                               custom_layout=custom_layout)
+                st.session_state["sku_preflight_v6"] = (fingerprint, preview_result)
+            except (OSError, RuntimeError, ValueError) as exc:
+                st.error(f"预检查失败：{exc}")
+    preflight = st.session_state.get("sku_preflight_v6")
+    current_preflight = preflight[1] if preflight and preflight[0] == fingerprint else None
+    if preflight and current_preflight is None:
+        st.warning("模板、Excel、图片或平台已变化；必须重新预检查。")
+    if current_preflight is not None:
+        st.info(f"预检查完成：{current_preflight.ready} 行可生成，{current_preflight.blocked} 行需要修正。")
+        st.dataframe(current_preflight.rows, hide_index=True, use_container_width=True)
+    allow_partial = st.checkbox("发现缺失/错误行时，仍仅对可生成的行继续制图", key="sku_v6_partial",
+                                disabled=not current_preflight or not current_preflight.blocked)
+    enabled = bool(current_preflight and current_preflight.ready and
+                   (not current_preflight.blocked or allow_partial))
+    if st.button("② 开始批量制图（尚未审核）", type="primary", use_container_width=True,
+                 disabled=not enabled, key="build_sku_excel"):
         st.session_state.pop("sku_excel_result", None)
         if using_v4 and custom_layout is None:
             st.error("V4 布局坐标无效，请先调整无重叠的区域")
@@ -65,8 +95,13 @@ def render(st, platform: str) -> None:
                     pictures = unpack_image_zip(zip_bytes) if zip_bytes else uploaded_pictures
                     result = build_sku_batch(excel_bytes, pictures, template_style=selected_style,
                                              custom_layout=custom_layout, clean_template=clean_template)
-                st.session_state["sku_excel_result"] = (fingerprint, result)
-                st.session_state["sku_excel_review_id"] = uuid.uuid4().hex
+                job = new_record(result.images, fingerprint=fingerprint, platform=platform,
+                                 template=template_choice, failed_generation=result.failures)
+                try:
+                    save_record(HISTORY, job)
+                except OSError as exc:
+                    st.warning(f"图片已生成，但本机任务历史写入失败：{exc}")
+                st.session_state["sku_excel_result"] = (fingerprint, result, job)
             except (ValueError, RuntimeError, OSError) as exc:
                 st.error(f"批量制作失败：{exc}")
     saved = st.session_state.get("sku_excel_result")
@@ -74,10 +109,11 @@ def render(st, platform: str) -> None:
         st.warning("Excel、产品图或平台已变化，旧结果已经隐藏；请重新生成，避免下载错 SKU 图。")
     if saved and saved[0] == fingerprint:
         result = saved[1]
+        job_record = saved[2] if len(saved) > 2 else None
         st.success(f"本次完成：{result.successes} 个 SKU 成功，{result.failures} 行未成功") if result.successes else st.warning("本次没有生成成功的图片，请查看每行失败原因")
         st.dataframe(result.rows, hide_index=True, use_container_width=True)
         st.caption("机器通过仅代表像素、格式等检查通过。图片孔位、材质、标注数字真实性及平台实时审核规则仍需人工检查。")
-        st.download_button("📦 下载 SKU 图片 ZIP + 逐行 CSV/JSON 报告 + 质量报告", result.zip_bytes(),
+        st.download_button("📦 下载内部制图包（未经人工审核，不可直接发布）", result.zip_bytes(),
                            file_name="sku_excel_批量图片及校验报告.zip", mime="application/zip", use_container_width=True)
         if result.images:
             st.write("**前 12 张图片预览**")
@@ -87,4 +123,14 @@ def render(st, platform: str) -> None:
                     with col:
                         st.image(data, caption=name, use_container_width=True)
 
-        render_sku_review(st, result, st.session_state.get("sku_excel_review_id", "unset"))
+        if job_record:
+            render_sku_review(st, result, job_record)
+    with st.expander("V6 本机任务流水记录（仅保存摘要，不保存原商品照片）", expanded=False):
+        try:
+            history = list_records(HISTORY, limit=20)
+            if history:
+                st.dataframe(history, hide_index=True, use_container_width=True)
+            else:
+                st.caption("暂无任务记录。刷新网页后，本机已保存的摘要仍可查看。")
+        except OSError as exc:
+            st.warning(f"无法读取本机任务列表：{exc}")
