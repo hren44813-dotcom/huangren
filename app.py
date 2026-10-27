@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from ecom_images.ai_bridge import generate_xinghe  # noqa: E402
 from ecom_images.session_guard import input_fingerprint  # noqa: E402
 from ecom_images.main_direction_ui import render as render_main_directions  # noqa: E402
+from ecom_images.sku_batch_ui import render as render_sku_batch  # noqa: E402
 from ecom_images.workflow import (  # noqa: E402
     UploadedPicture, planned_count, produce_images,
 )
@@ -27,7 +28,7 @@ st.info("标准制图在当前运行环境离线完成，不会将商品照片�
 platform = st.selectbox("目标平台", ["淘宝 / 天猫", "阿里国际站"])
 st.caption("平台选择用于区分工作流程；预设尺寸是制图模板，不代表平台实时审核规则。发布前请核对各平台最新要求。")
 
-direction_tab, standard, ai_tab = st.tabs(["① 主图方向策划（新增）", "② 标准主图 / SKU 批量制作（离线）", "③ 星河 AI 详情页（可选）"])
+direction_tab, standard, sku_tab, ai_tab = st.tabs(["① 主图方向策划", "② 标准主图 / SKU 批量制作", "③ Excel 批量 SKU（V2.0）", "④ 星河 AI 详情页（可选）"])
 
 with direction_tab:
     render_main_directions(st, platform)
@@ -83,6 +84,7 @@ with standard:
             st.error("请先上传至少一张产品图片")
         else:
             try:
+                # 生成前清除旧结果，避免新一轮失败时旧图继续出现。
                 st.session_state.pop("offline_result", None)
                 with st.spinner("正在生成与验证图片…"):
                     result = produce_images(
@@ -130,6 +132,9 @@ with standard:
                         st.image(data, caption=f"{name}  ·  {meta['width']}×{meta['height']}", use_container_width=True)
                         st.download_button("下载这张", data=data, file_name=Path(name).name,
                                            mime="image/jpeg", key=f"download_{name}")
+
+with sku_tab:
+    render_sku_batch(st, platform)
 
 with ai_tab:
     st.warning("该功能通过仓库内的星河技能脚本调用第三方 API，会上传你选择的产品图和提示词，可能产生费用；并非离线功能。AI 生成的产品结构、尺寸和文案必须人工复核。")

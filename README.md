@@ -100,15 +100,28 @@ python -m unittest discover -s tests -v
 完整操作方法和命令见 [星河技能使用说明](docs/xinghe-skill.md)。
 
 
+## 内置 Skills
+
+### 1. 电商主图 Skill
+- 路径：`.agents/skills/ecom-main-image-skill/SKILL.md`
+- 作用：先分析商品信息与买家顾虑，再给出 3 个主图方向；确定方向后执行主图生成与自检。
+
+### 2. 星河跨境电商详情 Skill
+- 路径：`.agents/skills/xinghe-crossborder-detail-3/SKILL.md`
+- 作用：用于跨境详情页、PDP、A+ 模块的 AI 视觉生成与页面规划。
+
 ## 主图方向策划（三选一，再出图）
 
-打开网页第一个标签「主图方向策划」，填写真实商品名称、已确认规格、使用场景和买家顾虑，点击「自动输出 3 个主图方向」。每个方向仅有 1 个点击理由；未选定方向不会制作图片。选定 A/B/C 后可以上传实物原图生成 1440×1440 的基础主图，并下载策划 JSON。此功能为本地模板策划，不具备自动识别图片参数的能力。完整说明见 [docs/web-ui.md](docs/web-ui.md)。
+中文网页的首个标签「主图方向策划」支持输入商品名、真实规格、已确认使用场景和买家顾虑，**一键输出 3 个方向，每个方向只含 1 个点击理由**。需手动选定方向后才能生成 1440×1440 的本地基础主图，也可以下载方向方案 JSON。详见 [中文界面说明](docs/web-ui.md)。这个功能是规则驱动的模板策划，不具备自动看图识别参数能力，不会虚构材质、检测数据或认证。
 
-## 图片质量报告与自动测试
+## Excel 批量 SKU 制图 V2.0
 
-批量制作下载的 ZIP 现在同时附带 `report.json` 与 `quality_report.json`：机器检查输出尺寸、格式和白底图边缘/文件大小；**产品结构、参数真实性和平台准入仍须人工验收**。
+中文界面「③ Excel 批量 SKU」现在支持下载 [Excel 模板](assets/templates/sku_import_template.xlsx)、逐行填写 SKU 编码/图片名/型号/孔距/总长/材质/色块颜色，并与照片 ZIP 或多图上传做严格文件名匹配。一个 SKU 对应一张 1440×1440 JPG；不存在的图片、重复 SKU、异常参数逐行报错，不会替换成其他产品图。下载包附带逐行 CSV/JSON 报告和机器质量检查清单。
 
-上传图片、品牌 Logo、文字、规格或目标平台一旦变化，操作界面会隐藏上一批结果，防止误用旧 SKU。
+命令行也可以使用：
 
-GitHub Actions 在提交到 `main` 及 Pull Request 时自动运行 Python 3.10 / 3.12 离线单元测试，不调用付费 AI 接口。详见 [发布前质检与自动测试说明](docs/qa-and-ci.md)。
+```bash
+python scripts/build_sku_excel.py --excel /path/to/list.xlsx --images /path/to/photos.zip --out output/sku_all.zip
+```
 
+详细说明见 [Excel SKU 制图使用指南](docs/sku-excel-v2.md)。Excel 表格只提供数据模板，不会自动推断规格、计算孔距或创造未提供的产品结构。
