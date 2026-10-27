@@ -32,3 +32,12 @@ generated-images/
 
 # V5 local template library (private to this machine)
 .local/
+
+# Local SQLite metadata and manual snapshots (never commit production records)
+backups/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-wal
+*.db-shm
