@@ -1,0 +1,13 @@
+{
+  "jobs": [
+    {
+      "mode": "sku",
+      "source_glob": "assets/input/*.png",
+      "output_pattern": "output/sku/{stem}_sku.jpg",
+      "title": "{stem} 规格图",
+      "accent": "#0D7FF4",
+      "title_color": "#FFFFFF",
+      "specs": []
+    }
+  ]
+}

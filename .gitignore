@@ -1,27 +1,24 @@
-# 私密配置及凭证
+# credentials
 .env
 .env.*
 !.env.example
 *.pem
 *.key
-
-# 系统及编辑器
+# operating system and IDE
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
-*.swp
-
-# 缓存、依赖与构建输出
+# python
 __pycache__/
 *.py[cod]
-node_modules/
-dist/
-build/
-.coverage
+.venv/
 .pytest_cache/
-
-# 日志及临时文件
+# production outputs and logs
+output/
+outputs/
 *.log
 *.tmp
 *.bak
+# Generated demo image (users can regenerate)
+assets/input/DEMO_only.png

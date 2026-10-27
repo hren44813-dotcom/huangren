@@ -1,0 +1,43 @@
+{
+  "jobs": [
+    {
+      "mode": "search_white",
+      "source": "assets/input/DEMO_only.png",
+      "output": "output/demo_white_1440.jpg"
+    },
+    {
+      "mode": "main",
+      "source": "assets/input/DEMO_only.png",
+      "output": "output/demo_main_1440.jpg",
+      "title": "工业柜体五金示例",
+      "subtitle": "仅演示排版，非真实商品",
+      "selling_points": ["参数请从实际商品填写"],
+      "accent": "#0D7FF4"
+    },
+    {
+      "mode": "portrait",
+      "source": "assets/input/DEMO_only.png",
+      "output": "output/demo_portrait_1440x1920.jpg",
+      "label": "演示素材"
+    },
+    {
+      "mode": "sku",
+      "source": "assets/input/DEMO_only.png",
+      "output": "output/demo_sku_1440.jpg",
+      "title": "示例 SKU · 请替换为真实型号",
+      "specs": [
+        {"label": "型号", "value": "待填写"},
+        {"label": "材质", "value": "待核实"}
+      ],
+      "accent": "#0D7FF4",
+      "title_color": "#FFFFFF"
+    },
+    {
+      "mode": "detail",
+      "source": "assets/input/DEMO_only.png",
+      "output": "output/demo_detail_800.jpg",
+      "title": "产品详情页示例",
+      "selling_points": ["请填写已经确认的规格参数", "请填写适用的设备类型"]
+    }
+  ]
+}
