@@ -203,3 +203,8 @@ V6 把原有 V2–V5 SKU 功能整理为四步：
 - 维护指南：[V10 数据库检查、迁移、备份与恢复](docs/database-v10.md)
 - 本轮审查记录：[V10 数据库审查报告](docs/database-audit-v10.md)
 - 历史指南保留：[V9 数据库说明](docs/database-v9.md)
+
+
+## 数据库任务查询 V11（只读）
+
+中文界面新增「⑤ 数据库运营查询（只读）」标签：按平台、任务阶段、UTC 日期和模板检索，分页展示历史任务，下载当前页 CSV，核对单个任务的审核事件摘要；不修改数据库。命令行使用 `python scripts/db_report.py summary` 或 `python scripts/db_report.py jobs --page 1 --format csv`。详细说明见 [V11 使用指南](docs/database-reporting-v11.md)。完整性与备份恢复仍使用 `scripts/db_admin.py`；不要把 SQLite 业务库、审核报表或图片上传到公开仓库。
