@@ -28,7 +28,7 @@ st.info("标准制图在当前运行环境离线完成，不会将商品照片�
 platform = st.selectbox("目标平台", ["淘宝 / 天猫", "阿里国际站"])
 st.caption("平台选择用于区分工作流程；预设尺寸是制图模板，不代表平台实时审核规则。发布前请核对各平台最新要求。")
 
-direction_tab, standard, sku_tab, ai_tab = st.tabs(["① 主图方向策划", "② 标准主图 / SKU 批量制作", "③ Excel 批量 SKU（V2.0）", "④ 星河 AI 详情页（可选）"])
+direction_tab, standard, sku_tab, ai_tab = st.tabs(["① 主图方向策划", "② 标准主图 / SKU 批量制作", "③ Excel SKU / 工业模板 V3", "④ 星河 AI 详情页（可选）"])
 
 with direction_tab:
     render_main_directions(st, platform)

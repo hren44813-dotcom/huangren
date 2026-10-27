@@ -24,7 +24,7 @@ from .workflow import BatchResult, MAX_UPLOAD, UploadedPicture, clean_stem, vali
 
 COLUMNS = (
     "SKU编码", "商品名称", "图片文件名", "型号", "孔距(mm)", "总长(mm)",
-    "材质", "表面处理", "色块颜色", "标题字色",
+    "材质", "表面处理", "色块颜色", "标题字色", "尺寸图文件名",
 )
 REQUIRED_COLUMNS = ("SKU编码", "商品名称", "图片文件名")
 MAX_ROWS = 80
@@ -248,8 +248,11 @@ def _specs(row: dict[str, str]) -> list[dict[str, str]]:
     return specs
 
 
-def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture]) -> SkuBatchResult:
+def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture], *, template_style: str | None = None) -> SkuBatchResult:
     """每行独立生成，失败行记录原因；不以其他图片替代缺失产品图。"""
+    from .sku_template_v3 import THEMES, render_sku_template
+    if template_style is not None and template_style not in THEMES:
+        raise ValueError("无效的 SKU 风格预设")
     rows = read_sku_rows(excel_data)
     if not pictures or len(pictures) > MAX_IMAGES:
         raise ValueError(f"请上传 1~{MAX_IMAGES} 张产品图")
@@ -284,8 +287,12 @@ def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture]) -> SkuBa
                 if pic is None:
                     raise ValueError("找不到对应产品图片，请核对图片文件名和扩展名")
                 validate_upload(pic)
-                accent = _valid_hex(data["色块颜色"] or "#0D7FF4", "色块颜色")
-                color = _valid_hex(data["标题字色"] or ("#000000" if accent.upper() in {"#F5C518", "#FFFF00"} else "#FFFFFF"), "标题字色")
+                if template_style is None:
+                    accent = _valid_hex(data["色块颜色"] or "#0D7FF4", "色块颜色")
+                    color = _valid_hex(data["标题字色"] or ("#000000" if accent.upper() in {"#F5C518", "#FFFF00"} else "#FFFFFF"), "标题字色")
+                else:
+                    # V3 固定主题不应用 Excel 的自定义颜色字段。
+                    accent = color = ""
                 stem = clean_stem(sku, row.row_number)
                 suffix = Path(pic.name).suffix.lower()
                 source = work / f"input_{row.row_number:04d}{suffix}"
@@ -293,12 +300,26 @@ def build_sku_batch(excel_data: bytes, pictures: list[UploadedPicture]) -> SkuBa
                 output_name = f"SKU_{stem}.jpg"
                 target = work / output_name
                 specs = _specs(data)
-                meta = build_job({
-                    "mode": "sku", "source": str(source), "output": str(target),
-                    "title": data["商品名称"].strip(), "specs": specs,
-                    "accent": accent, "background": "#F4F7FA", "title_color": color,
-                }, work)
-                image_data = target.read_bytes()
+                if template_style is None:
+                    meta = build_job({
+                        "mode": "sku", "source": str(source), "output": str(target),
+                        "title": data["商品名称"].strip(), "specs": specs,
+                        "accent": accent, "background": "#F4F7FA", "title_color": color,
+                    }, work)
+                    image_data = target.read_bytes()
+                else:
+                    drawing_name = data.get("尺寸图文件名", "").strip()
+                    dimension_picture = None
+                    if drawing_name:
+                        if drawing_name != _image_basename(drawing_name) or drawing_name in {".", ".."}:
+                            raise ValueError("尺寸图文件名不能包含路径")
+                        dimension_picture = image_lookup.get(drawing_name.casefold())
+                        if dimension_picture is None:
+                            raise ValueError("找不到此 SKU 对应的原尺寸图，不以其他图片替代")
+                    image_data, meta = render_sku_template(
+                        pic, drawing=dimension_picture, title=data["商品名称"].strip(),
+                        specs=specs, style=template_style,
+                    )
                 audit = audit_export(output_name, image_data, "sku")
                 if not audit["auto_pass"]:
                     raise ValueError("尺寸或格式自动质检未通过")

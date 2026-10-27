@@ -125,3 +125,15 @@ python scripts/build_sku_excel.py --excel /path/to/list.xlsx --images /path/to/p
 ```
 
 详细说明见 [Excel SKU 制图使用指南](docs/sku-excel-v2.md)。Excel 表格只提供数据模板，不会自动推断规格、计算孔距或创造未提供的产品结构。
+
+
+## SKU 工业模板 V3 + 文档知识规范
+
+V3 增加三种固定工业风：蓝白工业参数风、黄黑工业风、灰白极简技术风；Excel 每行可指定独立的 `尺寸图文件名`，将真实产品和原尺寸图分别等比例嵌入 1440×1440 的 SKU 模板，**不重新计算/绘制孔距或标注**。没有尺寸图时不臆造，缺指定文件时该行失败。
+
+- 操作说明：[docs/sku-template-v3.md](docs/sku-template-v3.md)
+- 学习资料提炼：[docs/knowledge-industrial-hardware.md](docs/knowledge-industrial-hardware.md)
+- 模板文件：`assets/templates/sku_import_template_v3.xlsx`
+- 代码：`src/ecom_images/sku_template_v3.py`
+
+本功能为预设版式，不是任意参考图的像素级自动复制；上架前逐张人工复核尺寸、结构和材质。
