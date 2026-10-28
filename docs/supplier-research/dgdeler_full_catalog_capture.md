@@ -31,7 +31,44 @@ python scripts/supplier_catalog_capture.py listing --max-pages 139 --delay 2.5
 python scripts/supplier_catalog_capture.py details --delay 3
 ```
 
-这会逐个访问目录中的商品详情页，提取页面标题、可见正文、规格表行、图片 URL 和页面链接。详情文本存入 `details/*.txt`，结构化字段存入 `details/*.json`。已经存在的详情文件会跳过。首次建议先用 `--limit 10` 检查采集效果，再决定是否读取全目录。
+这会逐个访问目录中的商品详情页，提取页面标题、可见正文、规格表、定义列表、图片、meta 标签、JSON-LD 产品字段以及页面上可见的 SKU 选项控件。详情文本存入 `details/*.txt`，结构化字段存入 `details/*.json`。已经保存且有对应文本文件的详情会跳过；损坏或不完整的 JSON 会重新采集。首次建议先用 `--limit 10` 检查采集效果，再决定是否读取全目录。
+
+详情采集结束后会生成：
+
+- `details_index.csv`：每个商品一行，含 SKU/MPN/品牌/分类/价格/库存状态线索、图片数、属性数和采集状态。
+- `detail_attributes.csv`：从规格表、定义列表及 JSON-LD `additionalProperty` 提取的字段-值长表，并保留页面行定位线索。
+- `details_markdown/*.md`：带原始链接、采集时间、页面原文和“未经独立验证”标记的资料，可作为 V13 知识库来源。
+- `details_audit.json`：检查详情缺失、损坏 JSON、缺失原文文件及是否完成。
+
+## 第三步：检查采集完整性
+
+```powershell
+python scripts/supplier_catalog_capture.py audit
+```
+
+该命令会重建目录与详情导出，并输出 `catalog_audit.json` 和 `details_audit.json`。目录审计会对照页面实际显示的分页总数列出缺失页；详情审计会列出没有详情记录的商品。只有所有可见分页均已采集且详情记录/原文齐全时，才会报告 complete。提前使用 `--max-pages` 做小范围测试时，partial 是预期结果。
+
+## 第四步：可选导入 V13 知识库
+
+先预览将要导入的文件：
+
+```powershell
+python scripts/import_supplier_capture_v13.py --dry-run
+```
+
+确认目录无误后导入：
+
+```powershell
+python scripts/import_supplier_capture_v13.py
+```
+
+也可以先只导入 10 份：
+
+```powershell
+python scripts/import_supplier_capture_v13.py --limit 10
+```
+
+导入会将每个商品详情 Markdown 作为 `supplier_document`、`unverified` 来源保存到 V13 文档检索库。它不会自动创建或接受产品参数主张。若要使用非默认数据库，可通过 `--database` 指定路径。
 
 ## 重要限制
 

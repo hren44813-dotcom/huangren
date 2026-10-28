@@ -291,4 +291,4 @@ streamlit run app.py
 
 ## 供应商商品目录全量采集（人工验证浏览器）
 
-如需采集阿里巴巴国际站供应商全部商品分页及商品详情，请按 [采集工具说明](docs/supplier-research/dgdeler_full_catalog_capture.md) 操作。工具会保存每页检查点、合并 JSON/CSV，并在出现登录/验证码时暂停等待人工处理；不会绕过网站访问控制。采集结果默认保存在被 `.gitignore` 排除的本地 `data/supplier_captures/` 目录，不会提交到公开仓库。
+如需采集阿里巴巴国际站供应商全部商品分页及商品详情，请按 [采集工具说明](docs/supplier-research/dgdeler_full_catalog_capture.md) 操作。工具会保存每页检查点，提取可见规格表、JSON-LD、图片与 SKU 选项，生成 `catalog.csv`、`details_index.csv`、`detail_attributes.csv` 和完整性审计。详情可通过 `scripts/import_supplier_capture_v13.py` 以 `supplier_document / unverified` 方式进入 V13，不会自动接受技术参数主张。出现登录/验证码时会暂停等待人工处理，不会绕过网站访问控制。采集结果默认保存在被 `.gitignore` 排除的本地 `data/supplier_captures/` 目录，不会提交到公开仓库。
