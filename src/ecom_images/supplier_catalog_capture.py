@@ -64,22 +64,94 @@ META_JS = r"""
 DETAIL_JS = r"""
 () => {
   const clean = value => (value || "").replace(/\s+/g, " ").trim();
-  const rows = Array.from(document.querySelectorAll("tr")).map(row =>
-    Array.from(row.querySelectorAll("th,td")).map(cell => clean(cell.innerText))
+  const visible = el => {
+    const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none";
+  };
+  const rows = Array.from(document.querySelectorAll("table")).flatMap(table =>
+    Array.from(table.querySelectorAll("tr")).map(row =>
+      Array.from(row.querySelectorAll("th,td")).map(cell => clean(cell.innerText))
+    )
   ).filter(row => row.length && row.some(Boolean));
   const definitions = Array.from(document.querySelectorAll("dt")).map(dt => {
     const dd = dt.nextElementSibling;
     return [clean(dt.innerText), clean(dd && dd.innerText)];
   }).filter(row => row[0] || row[1]);
-  const images = Array.from(document.querySelectorAll("img"))
-    .map(img => img.currentSrc || img.src || img.getAttribute("data-src") || "")
-    .filter(src => /^https?:\/\//i.test(src));
+  const imageDetails = Array.from(document.querySelectorAll("img"))
+    .filter(visible).map(img => ({
+      url: img.currentSrc || img.src || img.getAttribute("data-src") || "",
+      alt: clean(img.getAttribute("alt") || ""),
+      title: clean(img.getAttribute("title") || "")
+    })).filter(img => /^https?:\/\//i.test(img.url));
+  const metaTags = Array.from(document.querySelectorAll("meta[name],meta[property],meta[itemprop]"))
+    .map(meta => ({
+      key: meta.getAttribute("name") || meta.getAttribute("property") || meta.getAttribute("itemprop") || "",
+      value: meta.getAttribute("content") || ""
+    })).filter(meta => meta.key && meta.value);
+  const jsonLd = [], jsonLdErrors = [];
+  Array.from(document.querySelectorAll('script[type="application/ld+json"]')).forEach((script, index) => {
+    try { jsonLd.push({script_index:index + 1, data:JSON.parse(script.textContent || "null")}); }
+    catch (error) { jsonLdErrors.push({script_index:index + 1, error:String(error)}); }
+  });
+  const labelFor = el => {
+    if (el.id) {
+      const label = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
+      if (label) return clean(label.innerText);
+    }
+    const parent = el.closest("label");
+    if (parent) return clean(parent.innerText);
+    return clean(el.getAttribute("aria-label") || el.getAttribute("title") || "");
+  };
+  const optionGroups = Array.from(document.querySelectorAll("select")).filter(visible).map((el, index) => ({
+    kind:"select",
+    group:labelFor(el) || clean(el.name || el.getAttribute("aria-label") || ("select_" + (index + 1))),
+    options:Array.from(el.options).map(option => ({
+      label:clean(option.textContent), value:option.value,
+      selected:!!option.selected, disabled:!!option.disabled
+    })).filter(option => option.label || option.value)
+  }));
+  const choiceElements = Array.from(document.querySelectorAll(
+    'input[type="radio"],[role="radio"],[role="option"],[data-sku-id],[data-sku-value]'
+  )).filter(visible);
+  const grouped = new Map();
+  choiceElements.forEach((el, index) => {
+    const group = clean(el.name || el.closest('[role="radiogroup"]')?.getAttribute("aria-label") ||
+      el.closest("[data-sku-property]")?.getAttribute("data-sku-property") ||
+      el.closest("fieldset")?.querySelector("legend")?.innerText || "product_option");
+    if (!grouped.has(group)) grouped.set(group, []);
+    grouped.get(group).push({
+      label:labelFor(el) || clean(el.getAttribute("data-value") || el.getAttribute("data-sku-value") ||
+        el.getAttribute("aria-label") || el.getAttribute("title") || el.value || el.innerText || ("option_" + (index + 1))),
+      value:el.getAttribute("data-sku-value") || el.getAttribute("data-value") || el.value || "",
+      selected:el.checked === true || el.getAttribute("aria-checked") === "true" ||
+        /\b(selected|active|checked)\b/i.test(String(el.className || "")),
+      disabled:el.disabled === true || el.getAttribute("aria-disabled") === "true"
+    });
+  });
+  for (const [group, options] of grouped.entries()) {
+    optionGroups.push({kind:"choice", group, options});
+  }
   const canonical = document.querySelector('link[rel="canonical"]');
   const ogImage = document.querySelector('meta[property="og:image"]');
-  return {title:document.title || "", canonical_url:canonical ? canonical.href : location.href,
-    og_image:ogImage ? ogImage.content : "", image_urls:Array.from(new Set(images)),
-    table_rows:rows, definition_rows:definitions,
-    body_text:document.body ? document.body.innerText : ""};
+  const links = Array.from(document.querySelectorAll("a[href]")).filter(visible).map(a => ({
+    label:clean(a.innerText || a.getAttribute("aria-label") || ""),
+    url:a.href
+  })).filter(link => link.label && /^https?:\/\//i.test(link.url)).slice(0, 300);
+  return {
+    title:document.title || "",
+    canonical_url:canonical ? canonical.href : location.href,
+    og_image:ogImage ? ogImage.content : "",
+    image_urls:Array.from(new Set(imageDetails.map(img => img.url))),
+    image_details:imageDetails,
+    table_rows:rows,
+    definition_rows:definitions,
+    meta_tags:metaTags,
+    json_ld:jsonLd,
+    json_ld_errors:jsonLdErrors,
+    option_groups:optionGroups,
+    links:links,
+    body_text:document.body ? document.body.innerText : ""
+  };
 }
 """
 
