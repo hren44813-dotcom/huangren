@@ -95,13 +95,13 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
             record_claim_review(self.db,claim_id=claim_id,verdict="supports",reviewer_role="author",
                 reviewer_name="录入人",method="自查",notes="看起来一致",decision_state="accepted",
                 actor="审核人",decision_note="尝试接受")
-        detail=get_claim_review_detail(self.db,claim_id)
+        detail=get_claim_review_detail(self.db,claim_id=claim_id)
         self.assertEqual(detail["claim"]["state"],"proposed")
         self.assertEqual(detail["reviews"],[])
         record_claim_review(self.db,claim_id=claim_id,verdict="supports",reviewer_role="second_reviewer",
             reviewer_name="独立复核",method="对照原始页",notes="参数与原文一致",
             decision_state="accepted",actor="质量审核",decision_note="证据与独立复核满足门槛")
-        detail=get_claim_review_detail(self.db,claim_id)
+        detail=get_claim_review_detail(self.db,claim_id=claim_id)
         self.assertEqual(detail["claim"]["state"],"accepted")
         self.assertEqual(len(detail["reviews"]),1)
     def test_contradictory_review_reopens_accepted_claim(self):
@@ -110,7 +110,7 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
             reviewer_name="工程复核",method="核对原图",notes="支持",decision_state="accepted",actor="审核人")
         record_claim_review(self.db,claim_id=claim_id,verdict="contradicts",reviewer_role="manufacturer",
             reviewer_name="制造商",method="书面回复",notes="制造商给出的扭矩不同")
-        detail=get_claim_review_detail(self.db,claim_id)
+        detail=get_claim_review_detail(self.db,claim_id=claim_id)
         self.assertEqual(detail["claim"]["state"],"reopened")
         self.assertEqual(len(detail["reviews"]),2)
     def test_non_pdf_locator_is_saved_without_fake_page_number(self):
@@ -120,7 +120,7 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
         seg=self.segment(attribute="扭矩")
         result=create_claim_from_segment(self.db,segment_id=seg["segment_id"],model_id=self.model_id,
             attribute="扭矩",literal_value="6",unit="N.m",claim_kind="catalog_transcription",created_by="运营")
-        evidence=get_claim_review_detail(self.db,result["claim_id"])["evidence"][0]
+        evidence=get_claim_review_detail(self.db,claim_id=result["claim_id"])["evidence"][0]
         self.assertIsNone(evidence["pdf_page"])
         self.assertIsNotNone(evidence["region"]["line_start"])
         self.assertEqual(evidence["region"]["segment_type"],seg["segment_type"])
@@ -150,7 +150,7 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
         _,result=self.create_from_pdf()
         record_claim_review(self.db,claim_id=result["claim_id"],verdict="inconclusive",reviewer_role="other",
             reviewer_name="审核人",method="待确认",notes="图中文字模糊")
-        detail=get_claim_review_detail(self.db,result["claim_id"])
+        detail=get_claim_review_detail(self.db,claim_id=result["claim_id"])
         self.assertEqual(detail["reviews"][0]["verdict"],"inconclusive")
         self.assertEqual(detail["evidence"][0]["role"],"supports")
     def test_review_and_state_change_roll_back_if_acceptance_gate_fails(self):
@@ -158,7 +158,7 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"independent supporting review"):
             record_claim_review(self.db,claim_id=result["claim_id"],verdict="supports",reviewer_role="author",
                 reviewer_name="录入人",method="自查",notes="支持",decision_state="accepted",actor="审核人")
-        detail=get_claim_review_detail(self.db,result["claim_id"])
+        detail=get_claim_review_detail(self.db,claim_id=result["claim_id"])
         self.assertEqual(detail["claim"]["state"],"proposed")
         self.assertEqual(len(detail["reviews"]),0)
 
