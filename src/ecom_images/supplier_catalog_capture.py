@@ -91,6 +91,8 @@ def now_iso() -> str:
 
 def normalize_url(url: str) -> str:
     """Strip tracking query strings and fragments from a public product URL."""
+    if not url.strip():
+        return ""
     parts = urlsplit(url.strip())
     return urlunsplit((parts.scheme or "https", parts.netloc, parts.path, "", ""))
 
@@ -157,12 +159,18 @@ def scrape_listing_page(page, page_number: int, source_url: str) -> dict:
         if previous is None or len(item["card_text"]) > len(previous["card_text"]):
             deduped[item["product_url"]] = item
     metadata = page.evaluate(META_JS)
+    page_text = metadata.get("page_text", "")
+    pagination_text = next(
+        (line.strip() for line in page_text.splitlines() if re.search(r"\b\d+\s*/\s*\d+\b", line)),
+        None,
+    )
     return {
         "page_number": page_number,
         "page_url": page.url,
         "source_url": source_url,
         "captured_at": now_iso(),
         "visible_item_count": len(deduped),
+        "pagination_text": pagination_text,
         "page_title": metadata.get("page_title"),
         "category_links": metadata.get("category_links", []),
         "items": list(deduped.values()),
@@ -183,9 +191,11 @@ def save_listing_outputs(output: Path) -> dict:
     pages_dir = output / "pages"
     items_by_url: dict[str, dict] = {}
     page_files = sorted(pages_dir.glob("page_*.json"))
+    source_url = DEFAULT_URL
     for path in page_files:
         with path.open(encoding="utf-8") as stream:
             page_data = json.load(stream)
+        source_url = page_data.get("source_url") or source_url
         for item in page_data.get("items", []):
             if item.get("product_url"):
                 items_by_url[item["product_url"]] = item
@@ -193,7 +203,7 @@ def save_listing_outputs(output: Path) -> dict:
     catalog = {
         "schema_version": "1.0",
         "supplier": "Dongguan Dele Hardware Technology Co., Ltd.",
-        "source_url": DEFAULT_URL,
+        "source_url": source_url,
         "updated_at": now_iso(),
         "captured_page_count": len(page_files),
         "unique_product_count": len(items),

@@ -103,7 +103,7 @@ def click_page_number(page, target: int, old_fingerprint: str) -> bool:
         )
     except Exception:
         page.wait_for_timeout(1800)
-    return True
+    return product_fingerprint(page) != old_fingerprint
 
 
 def run_listing(args: argparse.Namespace) -> int:

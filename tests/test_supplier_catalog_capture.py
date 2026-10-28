@@ -47,6 +47,7 @@ class SupplierCatalogCaptureTests(unittest.TestCase):
     def test_normalize_url_and_challenge_detection(self):
         """Tracking parameters are removed and CAPTCHA pages are flagged for humans."""
         self.assertEqual(normalize_url("https://example.com/item?id=2#x"), "https://example.com/item")
+        self.assertEqual(normalize_url(""), "")
         self.assertTrue(is_challenge("Please slide to verify", "https://example.com"))
         self.assertFalse(is_challenge("Product title and price", "https://example.com"))
 
