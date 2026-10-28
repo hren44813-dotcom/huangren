@@ -31,19 +31,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     listing.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     listing.add_argument("--profile-dir", type=Path, default=ROOT / ".local-browser-profile" / "alibaba")
     listing.add_argument("--save-html", action="store_true", help="Save page HTML locally for audit.")
+    listing.add_argument("--headless", action="store_true", help="Run Chromium without a visible window; no manual CAPTCHA solving is possible.")
+    listing.add_argument("--no-prompt", action="store_true", help="Do not wait for terminal input; abort if a human check is required.")
     details = sub.add_parser("details", help="Visit captured product links and save visible detail text.")
     details.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     details.add_argument("--profile-dir", type=Path, default=ROOT / ".local-browser-profile" / "alibaba")
     details.add_argument("--delay", type=float, default=3.0)
     details.add_argument("--limit", type=int, default=0, help="Optional maximum number of products; 0 means all.")
     details.add_argument("--save-html", action="store_true", help="Save detail page HTML locally for audit.")
+    details.add_argument("--headless", action="store_true", help="Run Chromium without a visible window; no manual CAPTCHA solving is possible.")
+    details.add_argument("--no-prompt", action="store_true", help="Do not wait for terminal input; abort if a human check is required.")
+    details.add_argument("--retries", type=int, default=2, help="Retries per product after ordinary navigation errors.")
     audit = sub.add_parser("audit", help="Rebuild exports and report missing listing pages/details.")
     audit.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     return parser.parse_args(argv)
 
 
-def launch_browser(profile_dir: Path):
-    """Launch a visible persistent Chromium profile for manual login and verification."""
+def launch_browser(profile_dir: Path, *, headless: bool = False):
+    """Launch a persistent Chromium profile; headless mode cannot complete manual checks."""
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:
@@ -54,19 +59,23 @@ def launch_browser(profile_dir: Path):
     playwright = sync_playwright().start()
     profile_dir.mkdir(parents=True, exist_ok=True)
     context = playwright.chromium.launch_persistent_context(
-        user_data_dir=str(profile_dir), headless=False,
+        user_data_dir=str(profile_dir), headless=headless,
         viewport={"width": 1440, "height": 1000}, locale="en-US",
     )
     page = context.pages[0] if context.pages else context.new_page()
     return playwright, context, page
 
 
-def wait_for_manual_check(page, label: str) -> None:
+def wait_for_manual_check(page, label: str, *, interactive: bool = True) -> None:
     """Pause for a person to complete a site-provided check; never bypass a CAPTCHA."""
     while True:
         body = page.locator("body").inner_text(timeout=10000)
         if not is_challenge(body, page.url):
             return
+        if not interactive:
+            raise RuntimeError(
+                f"检测到登录/验证码或访问限制（{label}）。非交互模式已停止；不会尝试绕过验证。"
+            )
         print(f"\n检测到可能的登录/验证码页面：{label}")
         print("请在浏览器窗口手动完成验证；程序不会自动绕过验证码。")
         input("完成后回到终端按 Enter 继续；无法通过时按 Ctrl+C 停止：")
@@ -112,18 +121,24 @@ def run_listing(args: argparse.Namespace) -> int:
     """Capture listing pages one by one and save a checkpoint after every page."""
     if args.max_pages < 1:
         raise ValueError("--max-pages must be at least 1")
+    if args.delay < 0:
+        raise ValueError("--delay cannot be negative")
     output = args.output.resolve()
     pages_dir = output / "pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
-    playwright, context, page = launch_browser(args.profile_dir.resolve())
+    interactive = not args.no_prompt and not args.headless
+    playwright, context, page = launch_browser(args.profile_dir.resolve(), headless=args.headless)
     try:
         page.goto(args.url, wait_until="domcontentloaded", timeout=90000)
         page.wait_for_timeout(1800)
-        print("浏览器已打开。请在窗口中确认商品列表可见，并手动完成需要的登录/验证。")
-        input("准备好后回到终端按 Enter 开始采集：")
-        wait_for_manual_check(page, "商品列表")
+        if interactive:
+            print("浏览器已打开。请在窗口中确认商品列表可见，并手动完成需要的登录/验证。")
+            input("准备好后回到终端按 Enter 开始采集：")
+        else:
+            print("非交互采集模式：若网站要求登录或验证码，将停止并保留已保存检查点。")
+        wait_for_manual_check(page, "商品列表", interactive=interactive)
         for number in range(1, args.max_pages + 1):
-            wait_for_manual_check(page, f"商品列表第 {number} 页")
+            wait_for_manual_check(page, f"商品列表第 {number} 页", interactive=interactive)
             fingerprint = product_fingerprint(page)
             checkpoint = pages_dir / f"page_{number:03d}.json"
             if checkpoint.exists():
@@ -141,15 +156,20 @@ def run_listing(args: argparse.Namespace) -> int:
                 print(f"找不到第 {number + 1} 页的分页按钮。现有检查点已保留，可调整页面后重试。")
                 break
             page.wait_for_timeout(max(0.5, args.delay) * 1000)
-        print(json.dumps(save_listing_outputs(output), ensure_ascii=False, indent=2))
-        return 0
+        summary = save_listing_outputs(output)
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        return 0 if summary.get("audit_status") == "complete" else 2
     finally:
         context.close()
         playwright.stop()
 
 
 def run_details(args: argparse.Namespace) -> int:
-    """Capture visible product details at a respectful pace and checkpoint each product."""
+    """Capture visible product details, checkpoint each product, and continue past ordinary failures."""
+    if args.delay < 0:
+        raise ValueError("--delay cannot be negative")
+    if args.retries < 0 or args.retries > 5:
+        raise ValueError("--retries must be between 0 and 5")
     catalog_path = args.output.resolve() / "catalog.json"
     if not catalog_path.exists():
         raise FileNotFoundError(f"未找到目录 {catalog_path}；请先运行 listing 子命令。")
@@ -159,50 +179,103 @@ def run_details(args: argparse.Namespace) -> int:
         items = items[:args.limit]
     detail_dir = args.output.resolve() / "details"
     detail_dir.mkdir(parents=True, exist_ok=True)
-    playwright, context, page = launch_browser(args.profile_dir.resolve())
+    error_path = detail_dir / "capture_errors.json"
+    prior_errors = []
+    if error_path.is_file():
+        try:
+            value = json.loads(error_path.read_text(encoding="utf-8"))
+            if isinstance(value, list):
+                prior_errors = [row for row in value if isinstance(row, dict)]
+        except (OSError, json.JSONDecodeError):
+            prior_errors = []
+    errors_by_item = {
+        str(row.get("item_id") or row.get("item_ref") or ""): row
+        for row in prior_errors if row.get("item_id") or row.get("item_ref")
+    }
+    interactive = not args.no_prompt and not args.headless
+    playwright, context, page = launch_browser(args.profile_dir.resolve(), headless=args.headless)
+    stop_for_challenge = False
     try:
         page.goto(DEFAULT_URL, wait_until="domcontentloaded", timeout=90000)
         page.wait_for_timeout(1200)
-        print("详情页将按间隔逐个访问；若出现登录/验证码，请手动处理。")
-        input("准备好后回到终端按 Enter 开始：")
+        if interactive:
+            print("详情页将按间隔逐个访问；若出现登录/验证码，请手动处理。")
+            input("准备好后回到终端按 Enter 开始：")
+        else:
+            print("非交互详情采集模式：遇到登录/验证码时会停止并保留检查点。")
         for index, item in enumerate(items, start=1):
             item_id = item.get("item_id") or hashlib.sha256(item["product_url"].encode()).hexdigest()[:16]
             path = detail_dir / f"{item_id}.json"
+            text_path = detail_dir / f"{item_id}.txt"
             if path.exists():
                 try:
                     prior = json.loads(path.read_text(encoding="utf-8"))
-                    prior_text = detail_dir / f"{item_id}.txt"
-                    if isinstance(prior, dict) and isinstance(prior.get("detail_page"), dict) and prior_text.exists():
+                    if isinstance(prior, dict) and isinstance(prior.get("detail_page"), dict) and text_path.exists():
                         print(f"[{index}/{len(items)}] 跳过已保存详情：{item.get('title', item_id)}")
+                        errors_by_item.pop(str(item_id), None)
                         continue
                     print(f"[{index}/{len(items)}] 详情记录不完整，将重新采集：{item.get('title', item_id)}")
                 except (OSError, json.JSONDecodeError):
                     print(f"[{index}/{len(items)}] 详情 JSON 无法读取，将重新采集：{item.get('title', item_id)}")
-            page.goto(item["product_url"], wait_until="domcontentloaded", timeout=90000)
-            page.wait_for_timeout(1200)
-            wait_for_manual_check(page, f"商品详情 {item.get('title', item_id)}")
-            detail = page.evaluate(DETAIL_JS)
-            body_text = detail.pop("body_text", "")
-            detail["body_text_file"] = f"{item_id}.txt"
-            record = {
-                "item_id": item_id,
-                "listing_title": item.get("title"),
-                "listing_url": item.get("product_url"),
-                "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                "detail_url": page.url,
-                "detail_page": detail,
-                "verification_status": "visible_detail_page_observation_unverified",
-            }
-            path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            (detail_dir / f"{item_id}.txt").write_text(body_text, encoding="utf-8")
-            if args.save_html:
-                (detail_dir / f"{item_id}.html").write_text(page.content(), encoding="utf-8")
-            print(f"[{index}/{len(items)}] 已保存详情：{item.get('title', item_id)}")
+            success = False
+            for attempt in range(args.retries + 1):
+                try:
+                    page.goto(item["product_url"], wait_until="domcontentloaded", timeout=90000)
+                    page.wait_for_timeout(1200)
+                    wait_for_manual_check(page, f"商品详情 {item.get('title', item_id)}", interactive=interactive)
+                    detail = page.evaluate(DETAIL_JS)
+                    body_text = detail.pop("body_text", "")
+                    detail["body_text_file"] = f"{item_id}.txt"
+                    record = {
+                        "item_id": item_id,
+                        "listing_title": item.get("title"),
+                        "listing_url": item.get("product_url"),
+                        "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                        "detail_url": page.url,
+                        "detail_page": detail,
+                        "verification_status": "visible_detail_page_observation_unverified",
+                    }
+                    path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                    text_path.write_text(body_text, encoding="utf-8")
+                    if args.save_html:
+                        (detail_dir / f"{item_id}.html").write_text(page.content(), encoding="utf-8")
+                    errors_by_item.pop(str(item_id), None)
+                    print(f"[{index}/{len(items)}] 已保存详情：{item.get('title', item_id)}")
+                    success = True
+                    break
+                except Exception as exc:
+                    try:
+                        body = page.locator("body").inner_text(timeout=3000)
+                    except Exception:
+                        body = ""
+                    challenge = is_challenge(body, page.url)
+                    errors_by_item[str(item_id)] = {
+                        "item_id": str(item_id), "product_url": item.get("product_url", ""),
+                        "title": item.get("title", ""), "attempt": attempt + 1,
+                        "occurred_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                        "error_type": type(exc).__name__, "message": str(exc)[:1000],
+                        "challenge_or_access_restriction": challenge,
+                    }
+                    if challenge:
+                        print(f"[{index}/{len(items)}] 检测到登录/验证码/访问限制，停止详情采集并保存进度。")
+                        stop_for_challenge = True
+                        break
+                    if attempt < args.retries:
+                        print(f"[{index}/{len(items)}] 采集失败，第 {attempt + 1} 次重试：{exc}")
+                        page.wait_for_timeout(max(1.0, args.delay) * 1000)
+            error_path.write_text(
+                json.dumps(list(errors_by_item.values()), ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            if not success:
+                print(f"[{index}/{len(items)}] 未能采集详情，已记入 capture_errors.json。")
+            if stop_for_challenge:
+                break
             page.wait_for_timeout(max(1.0, args.delay) * 1000)
         detail_audit = write_detail_exports(args.output.resolve())
         print(json.dumps(detail_audit, ensure_ascii=False, indent=2))
         print(f"详情采集结束。文件目录：{detail_dir}")
-        return 0
+        return 0 if detail_audit.get("is_complete") else 2
     finally:
         context.close()
         playwright.stop()
