@@ -250,6 +250,7 @@ class SupplierCatalogDatabaseTests(unittest.TestCase):
         (pages / "page_001.json").write_text(json.dumps({
             "page_number": 1, "pagination_text": "1/1", "items": [item],
         }), encoding="utf-8")
+        (self.capture / "catalog.json").write_text(json.dumps({"items": [item]}), encoding="utf-8")
         summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=self.snapshot,
                                         require_details=True)
         self.assertEqual(summary["status"], "partial")
