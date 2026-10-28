@@ -743,7 +743,11 @@ def _document_results(conn:sqlite3.Connection,tokens:list[str],model:str,limit:i
     for item in candidates:
         if item["segment_type"] in {"pdf_page","markdown_section","docx_section","text_block"}:
             loc=item["location"]
-            if (item["source_id"],loc["pdf_page"],loc["sheet_name"],loc["heading_path"]) in precise: continue
+            same_context = (item["source_id"],loc["pdf_page"],loc["sheet_name"],loc["heading_path"]) in precise
+            # For HTML/text sources, keep the larger context block alongside a precise
+            # matching line so adjacent table values remain discoverable in model search.
+            text_context = item["segment_type"] == "text_block" and loc["pdf_page"] is None and not loc["sheet_name"]
+            if same_context and not text_context: continue
         results.append(item)
     results.sort(key=lambda x:(-x["score"],x["filename"],x["location"]["pdf_page"] or 0,x["location"]["line_start"] or 0))
     return results[:limit]
