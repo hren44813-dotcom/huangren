@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from ecom_images.supplier_capture_validation import validate_alibaba_url  # noqa: E402
 from ecom_images.supplier_catalog_capture import (  # noqa: E402
     DEFAULT_URL, DETAIL_JS, is_challenge, product_fingerprint, save_listing_outputs,
     scrape_listing_page, write_detail_exports,
@@ -124,6 +125,7 @@ def run_listing(args: argparse.Namespace) -> int:
         raise ValueError("--max-pages must be at least 1")
     if args.delay < 0:
         raise ValueError("--delay cannot be negative")
+    validate_alibaba_url(args.url)
     output = args.output.resolve()
     pages_dir = output / "pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -227,6 +229,7 @@ def run_details(args: argparse.Namespace) -> int:
             success = False
             for attempt in range(args.retries + 1):
                 try:
+                    validate_alibaba_url(item["product_url"], require_product=True)
                     page.goto(item["product_url"], wait_until="domcontentloaded", timeout=90000)
                     page.wait_for_timeout(1200)
                     wait_for_manual_check(page, f"商品详情 {item.get('title', item_id)}", interactive=interactive)

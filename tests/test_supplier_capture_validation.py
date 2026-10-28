@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from ecom_images.supplier_capture_validation import inspect_supplier_capture
+from ecom_images.supplier_capture_validation import inspect_supplier_capture, validate_alibaba_url
 
 
 class SupplierCaptureValidationTests(unittest.TestCase):
@@ -94,3 +94,34 @@ class SupplierCaptureValidationTests(unittest.TestCase):
         result = inspect_supplier_capture(self.root, require_details=True)
         self.assertEqual(result["status"], "partial")
         self.assertEqual(result["unresolved_detail_capture_errors"], 1)
+
+
+    def test_url_guard_rejects_non_alibaba_and_non_https_destinations(self):
+        """Do not allow saved product links to redirect a browser to local/private URLs."""
+        self.assertEqual(validate_alibaba_url(
+            "https://dgdeler.en.alibaba.com/productlist.html"
+        ), "https://dgdeler.en.alibaba.com/productlist.html")
+        self.assertTrue(validate_alibaba_url(self.url, require_product=True))
+        for bad in (
+            "http://www.alibaba.com/product-detail/CL226_12.html",
+            "file:///etc/passwd",
+            "https://127.0.0.1/product-detail/CL226_12.html",
+            "https://www.alibaba.com.evil.example/product-detail/CL226_12.html",
+            "https://www.alibaba.com@evil.example/product-detail/CL226_12.html",
+            "https://www.alibaba.com:444/product-detail/CL226_12.html",
+        ):
+            with self.subTest(url=bad):
+                with self.assertRaises(ValueError):
+                    validate_alibaba_url(bad, require_product=True)
+        with self.assertRaises(ValueError):
+            validate_alibaba_url("https://www.alibaba.com/index.html", require_product=True)
+
+    def test_untrusted_url_cannot_pass_complete_audit(self):
+        """An invalid product destination is an invalid captured inventory row."""
+        self.put_json("catalog.json", {"items": [{
+            "item_id": "cl226-id",
+            "product_url": "https://127.0.0.1/product-detail/CL226.html",
+        }]})
+        report = inspect_supplier_capture(self.root)
+        self.assertEqual(report["status"], "partial")
+        self.assertIn("catalog_has_invalid_product_url", report["failures"])

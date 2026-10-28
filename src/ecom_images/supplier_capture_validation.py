@@ -10,6 +10,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from .supplier_catalog_capture import normalize_url
 
@@ -31,6 +32,22 @@ def _read_json(path: Path) -> dict[str, Any]:
     return obj
 
 
+
+def validate_alibaba_url(value: str, *, require_product: bool = False) -> str:
+    """Reject local, non-HTTPS and non-Alibaba destinations before browser navigation."""
+    if not isinstance(value, str) or len(value) > 4096:
+        raise ValueError("页面链接格式无效")
+    parts = urlsplit(value.strip())
+    host = (parts.hostname or "").lower()
+    if (parts.scheme != "https" or not host
+            or not (host == "alibaba.com" or host.endswith(".alibaba.com"))
+            or parts.username is not None or parts.password is not None
+            or parts.port not in (None, 443)):
+        raise ValueError("仅允许 HTTPS 阿里巴巴页面")
+    if require_product and not parts.path.startswith("/product-detail/"):
+        raise ValueError("商品详情链接必须是阿里巴巴 product-detail 页面")
+    return value.strip()
+
 def _canonical_item(item: Any) -> str:
     """Canonicalize a captured product URL, returning empty for invalid rows."""
     if not isinstance(item, dict):
@@ -38,7 +55,10 @@ def _canonical_item(item: Any) -> str:
     value = item.get("product_url") or item.get("url") or item.get("listing_url")
     if not isinstance(value, str):
         return ""
-    return normalize_url(value)
+    try:
+        return normalize_url(validate_alibaba_url(value, require_product=True))
+    except ValueError:
+        return ""
 
 
 def _item_id(item: dict) -> str:
