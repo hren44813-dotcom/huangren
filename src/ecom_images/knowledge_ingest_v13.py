@@ -12,6 +12,7 @@ from .catalog_v12 import _validate_catalog
 from .database_v9 import DEFAULT_DB, open_database
 from .knowledge_schema_v13 import open_knowledge_readonly, validate_knowledge
 from .knowledge_v13 import register_source
+from .html_capture_v13 import parse_html_document
 
 INGEST_SCHEMA_VERSION="1"
 PARSER_VERSION="1.0"
@@ -22,7 +23,7 @@ MAX_EXCEL_COLUMNS=512
 MAX_ARCHIVE_ENTRIES=20_000
 MAX_ARCHIVE_UNCOMPRESSED_BYTES=250*1024*1024
 MAX_SEGMENT_CHARS=30_000
-SUPPORTED_SUFFIXES={".pdf",".docx",".md",".markdown",".txt",".xlsx",".xlsm",".xls"}
+SUPPORTED_SUFFIXES={".pdf",".docx",".md",".markdown",".txt",".xlsx",".xlsm",".xls",".html",".htm"}
 _DDL=(
 """CREATE TABLE knowledge_ingest_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)""",
 """CREATE TABLE knowledge_document_segments(
@@ -498,6 +499,35 @@ def _parse_xls(path:Path)->tuple[list[dict[str,Any]],None,list[str]]:
     return segments,None,warnings
 
 
+def _parse_html(path:Path)->tuple[list[dict[str,Any]],None,list[str]]:
+    """Index visible HTML text and table rows without executing page scripts."""
+    raw=path.read_bytes()
+    try:
+        html=raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        html=raw.decode("gb18030",errors="replace")
+    parsed=parse_html_document(html)
+    lines=[(index,line) for index,line in enumerate(parsed["lines"],start=1) if line.strip()]
+    segments=[]; ordinal=0
+    for line_no,line_text in lines:
+        ordinal+=1
+        item=_segment(f"html:line:{line_no}","text_line",ordinal,line_text,
+            line_start=line_no,line_end=line_no,
+            heading_path="",
+            region={"extracted_text_line":line_no,"precision":"visible_text_line"})
+        if item: segments.append(item)
+    for chunk_no,(first,last,chunk) in enumerate(_split_chunks(lines),start=1):
+        ordinal+=1
+        item=_segment(f"html:block:{chunk_no}","text_block",ordinal,chunk,
+            line_start=first,line_end=last,
+            region={"extracted_text_line_start":first,"extracted_text_line_end":last,
+                    "precision":"visible_text_block"})
+        if item: segments.append(item)
+    warnings=["HTML 仅索引可见文本与表格行；行号指提取后的文本行，不是原始 HTML 源码行；不执行脚本或样式"]
+    if not segments: warnings.append("HTML 页面没有可索引的可见文本")
+    return segments,None,warnings
+
+
 def _parse_document(path:Path)->tuple[list[dict[str,Any]],int|None,list[str]]:
     suffix=path.suffix.lower()
     if suffix in {".docx",".xlsx",".xlsm"}: _safe_archive(path)
@@ -507,40 +537,53 @@ def _parse_document(path:Path)->tuple[list[dict[str,Any]],int|None,list[str]]:
     if suffix==".txt": return _parse_markdown(path,plain_text=True)
     if suffix in {".xlsx",".xlsm"}: return _parse_xlsx(path)
     if suffix==".xls": return _parse_xls(path)
+    if suffix in {".html",".htm"}: return _parse_html(path)
     raise ValueError(f"不支持的文件格式：{suffix}")
 
 
 def _register_source(path:str|Path,*,filename:str,source_kind:str,authority_level:str,sha256:str,size_bytes:int,
                      media_type:str,page_count:int|None,document_family:str,document_number:str,
-                     revision_label:str,issue_date:str,storage_ref:str)->str:
+                     revision_label:str,issue_date:str,storage_ref:str,
+                     source_metadata:dict[str,str]|None=None)->str:
     """Reuse matching provenance without mutating or upgrading existing source metadata."""
     with open_database(path) as conn:
         _validate_catalog(conn); validate_knowledge(conn)
         old=conn.execute("""SELECT id,original_filename,source_kind,authority_level,size_bytes,document_family,
-            document_number,revision_label,issue_date,media_type,page_count FROM knowledge_sources WHERE sha256=?""",
-            (sha256,)).fetchone()
+            document_number,revision_label,issue_date,media_type,page_count,metadata_json
+            FROM knowledge_sources WHERE sha256=?""",(sha256,)).fetchone()
     if old:
         expected=(filename,source_kind,authority_level,size_bytes,document_family,document_number,revision_label,issue_date)
         if tuple(old[1:9])!=expected:
             raise ValueError("同一 SHA-256 已存在但文件身份/来源元数据不一致；不会覆盖或升级原始来源记录")
         if old[9] and media_type and old[9]!=media_type: raise ValueError("同一 SHA-256 已存在但媒体类型不一致")
         if old[10] is not None and page_count is not None and old[10]!=page_count: raise ValueError("同一 SHA-256 已存在但页数不一致")
+        if source_metadata is not None and _obj(old[11])!=source_metadata:
+            raise ValueError("同一 SHA-256 已存在但来源 URL/元数据不一致；不会覆盖原始来源记录")
         return old[0]
     return register_source(path,filename=filename,source_kind=source_kind,authority_level=authority_level,
         sha256=sha256,size_bytes=size_bytes,media_type=media_type,page_count=page_count,
         document_family=document_family,document_number=document_number,revision_label=revision_label,
-        issue_date=issue_date,storage_ref=storage_ref,metadata={})
+        issue_date=issue_date,storage_ref=storage_ref,metadata=source_metadata or {})
 
 
 def import_document(path:str|Path=DEFAULT_DB,*,file_path:str|Path,source_kind:str="other",
                     authority_level:str="user_supplied",document_family:str="",document_number:str="",
-                    revision_label:str="",issue_date:str="",max_bytes:int=MAX_SOURCE_BYTES)->dict[str,Any]:
+                    revision_label:str="",issue_date:str="",source_metadata:dict[str,str]|None=None,
+                    max_bytes:int=MAX_SOURCE_BYTES)->dict[str,Any]:
     """Copy, fingerprint, parse and index one local document; never create claims automatically."""
     if type(max_bytes) is not int or not 1<=max_bytes<=MAX_SOURCE_BYTES: raise ValueError(f"max_bytes 必须在 1 到 {MAX_SOURCE_BYTES} 之间")
     if source_kind not in {"manufacturer_document","supplier_document","purchase_record","physical_photo","lab_report","platform_export","internal_note","other"}:
         raise ValueError("资料类型无效")
     if authority_level not in {"unverified","user_supplied","manufacturer_controlled","independent_test","system_export"}:
         raise ValueError("来源级别无效")
+    if source_metadata is not None:
+        if not isinstance(source_metadata,dict) or len(source_metadata)>50:
+            raise ValueError("source_metadata 必须是最多 50 项的字典")
+        if any(not isinstance(k,str) or not k or len(k)>100 or not isinstance(v,str) or len(v)>2000
+               for k,v in source_metadata.items()):
+            raise ValueError("source_metadata 的键和值必须是受限长度的字符串")
+        if len(_json(source_metadata))>20_000:
+            raise ValueError("source_metadata 序列化后超过 20 KB")
     source=_safe_path(file_path,"原始资料")
     if not source.exists() or not source.is_file(): raise ValueError("原始资料文件不存在或不是普通文件")
     if source.name in {".",".."} or len(source.name)>255 or any(ord(c)<32 for c in source.name): raise ValueError("原始资料文件名无效")
@@ -557,11 +600,13 @@ def import_document(path:str|Path=DEFAULT_DB,*,file_path:str|Path,source_kind:st
         source_id=_register_source(path,filename=source.name,source_kind=source_kind,authority_level=authority_level,
             sha256=sha,size_bytes=size,media_type=media_type,page_count=page_count,
             document_family=document_family.strip(),document_number=document_number.strip(),
-            revision_label=revision_label.strip(),issue_date=issue_date.strip(),storage_ref=storage_ref)
+            revision_label=revision_label.strip(),issue_date=issue_date.strip(),storage_ref=storage_ref,
+            source_metadata=source_metadata)
         _finalize_staged_file(tmp,final,sha,size)
         metadata={"file_format":source.suffix.lower().lstrip("."),"media_type":media_type,"page_count":page_count,
             "document_family":document_family.strip(),"document_number":document_number.strip(),
-            "revision_label":revision_label.strip(),"issue_date":issue_date.strip(),"parser":"knowledge_ingest_v13"}
+            "revision_label":revision_label.strip(),"issue_date":issue_date.strip(),"parser":"knowledge_ingest_v13",
+            "source_metadata":source_metadata or {}}
         with open_database(path) as conn:
             _validate_catalog(conn); validate_knowledge(conn); validate_ingestion(conn)
             old=conn.execute("""SELECT run_id,segment_count,storage_relpath,warning_json FROM knowledge_ingest_runs
@@ -671,7 +716,7 @@ def search_models(path:str|Path=DEFAULT_DB,*,query:str="",limit:int=100)->list[d
 def _document_results(conn:sqlite3.Connection,tokens:list[str],model:str,limit:int)->list[dict[str,Any]]:
     sql="""SELECT d.id,d.source_id,d.segment_type,d.ordinal,d.pdf_page,d.printed_page,d.sheet_name,d.cell_range,
         d.line_start,d.line_end,d.heading_path,d.text,d.region_json,s.original_filename,s.source_kind,
-        s.authority_level,s.sha256,s.storage_ref FROM knowledge_document_segments d
+        s.authority_level,s.sha256,s.storage_ref,s.metadata_json FROM knowledge_document_segments d
         JOIN knowledge_sources s ON s.id=d.source_id WHERE d.parser_version=?"""
     args=[PARSER_VERSION]
     for token in tokens: sql+=" AND INSTR(UPPER(d.text),UPPER(?))>0"; args.append(token)
@@ -690,6 +735,7 @@ def _document_results(conn:sqlite3.Connection,tokens:list[str],model:str,limit:i
         if tokens and all(t.casefold() in text_value.casefold() for t in tokens): score+=10
         candidates.append({"type":"document","source_id":r[1],"filename":r[13],"source_kind":r[14],
             "authority_level":r[15],"source_sha256":r[16],"storage_ref":r[17] or None,
+            "source_metadata":_obj(r[18]),
             "segment_id":r[0],"segment_type":r[2],"text":text_value,
             "snippet":_snippet(text_value,tokens+([model] if model else [])),"location":location,"score":score,
             "verification_note":"这是原始资料的文字检索结果，不代表参数已通过独立验证"})
