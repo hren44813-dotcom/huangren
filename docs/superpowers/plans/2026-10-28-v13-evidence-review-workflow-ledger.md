@@ -10,3 +10,12 @@ Ruling: Reuse the V13 append-only schema and triggers instead of creating V17/V1
 Ruling: Make claim+evidence creation and review+optional state transition atomic — a partial operation would leave a misleading half-reviewed record.
 
 Ruling: PDF preview re-hashes stored bytes before rendering — visual evidence must correspond to the source fingerprint registered in the database.
+
+
+Ruling: Expose local document upload in the existing Streamlit tab — this completes the import-to-review path without adding a second UI framework; uploaded files are staged beneath the verified database directory and the temporary copy is deleted after import.
+
+Ruling: Keep physical-photo source classification out of the document uploader — this uploader accepts document formats only, and must not imply image/OCR support.
+
+Ruling: Return SKU free-text model separately from manufacturer model identity in the review queue — identical strings do not prove an approved SKU-to-model mapping.
+
+Verification checkpoint: GitHub Actions run 40622739692 passed the full 278-test suite on Python 3.10 and Python 3.12.
