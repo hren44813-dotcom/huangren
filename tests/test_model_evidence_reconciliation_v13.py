@@ -155,6 +155,19 @@ class ModelEvidenceReconciliationTests(unittest.TestCase):
         self.assertEqual(len(evidence["source_sha256"]), 64)
         self.assertIn("Rated torque", evidence["literal_excerpt"])
 
+    def test_tampered_source_bytes_block_previously_accepted_claim(self):
+        imported = self.import_pdf()
+        self.accepted_claim(imported, "6")
+        stored = self.root / imported["storage_relpath"]
+        stored.write_bytes(stored.read_bytes() + b"tampered after review")
+        result = evaluate_content_gate(
+            self.db, model_code="GL1-336", required_attributes=["Torque"],
+        )
+        self.assertFalse(result["allowed"])
+        self.assertTrue(any("原始文件" in reason for reason in result["reasons"]))
+        claim = result["reconciliation"]["models"][0]["claims"][0]
+        self.assertFalse(claim["evidence"][0]["source_bytes_verified"])
+
     def test_different_accepted_values_create_conflict_and_block_content(self):
         first = self.import_pdf("catalog-a.pdf", torque="6 N.m")
         second = self.import_pdf("catalog-b.pdf", torque="8 N.m")
