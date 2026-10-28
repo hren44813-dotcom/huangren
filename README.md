@@ -288,3 +288,7 @@ streamlit run app.py
 - [运营助理 CSV](docs/supplier-research/dgdeler_product_list_page1_2026-10-28.csv)
 
 价格、MOQ 和可见销量是采集时页面展示值；标题中的技术描述均标记为未验证。
+
+## 供应商商品目录全量采集（人工验证浏览器）
+
+如需采集阿里巴巴国际站供应商全部商品分页及商品详情，请按 [采集工具说明](docs/supplier-research/dgdeler_full_catalog_capture.md) 操作。工具会保存每页检查点、合并 JSON/CSV，并在出现登录/验证码时暂停等待人工处理；不会绕过网站访问控制。采集结果默认保存在被 `.gitignore` 排除的本地 `data/supplier_captures/` 目录，不会提交到公开仓库。

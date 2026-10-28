@@ -41,3 +41,7 @@ backups/
 *.db
 *.db-wal
 *.db-shm
+
+# Local supplier catalog captures and browser profile (never commit collected data)
+data/supplier_captures/
+.local-browser-profile/
