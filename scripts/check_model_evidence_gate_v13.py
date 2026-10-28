@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -49,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
             result["mode"] = "reconciliation"
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("allowed", True) else 2
-    except (OSError, ValueError, RuntimeError) as exc:
+    except (OSError, ValueError, RuntimeError, sqlite3.Error) as exc:
         print(json.dumps({
             "allowed": False, "status": "error", "model_code": args.model_code,
             "error": str(exc),
