@@ -69,7 +69,7 @@ class SupplierV13ImportTests(unittest.TestCase):
                 rows = conn.execute(
                     "SELECT original_filename,source_kind,authority_level,metadata_json FROM knowledge_sources"
                 ).fetchall()
-                self.assertEqual(len(rows), 2)
+                self.assertEqual(len(rows), 3)
                 by_name = {row[0]: row for row in rows}
                 listing = by_name["dgdeler_product_list_page1_2026-10-28.md"]
                 self.assertEqual(listing[1:3], ("other", "unverified"))
@@ -78,4 +78,9 @@ class SupplierV13ImportTests(unittest.TestCase):
                 self.assertEqual(listing_metadata["source_url"], "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq")
                 profile = by_name["dgdeler_supplier_profile_2026-10-28.md"]
                 self.assertEqual(json.loads(profile[3])["source_url"], "https://dgdeler.en.alibaba.com/")
+                categories = by_name["dgdeler_store_category_index_2026-10-28.md"]
+                self.assertEqual(categories[1:3], ("other", "unverified"))
+                category_metadata = json.loads(categories[3])
+                self.assertEqual(category_metadata["page_kind"], "store_category_index_snapshot")
+                self.assertEqual(category_metadata["source_url"], "https://dgdeler.en.alibaba.com/")
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM knowledge_claims").fetchone()[0], 0)
