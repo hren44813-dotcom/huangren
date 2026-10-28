@@ -228,3 +228,17 @@ python scripts/catalog_admin.py import-csv --input sku_catalog.csv --apply
 ```
 
 详见 [V12 数据库结构与完整指南](docs/database-catalog-v12.md) 和 [部署验收表](docs/database-v12-checklist.md)。数据库元数据不包含商品原图；本地 SQLite 不是多人权限平台。
+
+
+## V13 知识库核心数据模型与证据闭环
+
+在现有 V10/V12 SQLite 上增量增加制造商型号、显式 SKU 映射、原始资料指纹、参数主张、逐页证据定位、独立复核、冲突处理及状态历史。不会自动从 SKU 文本推断制造商型号；不会把原始文件字节存入数据库；证据、审核与状态事件采用追加式记录。
+
+- 设计说明：[V13 核心数据模型与证据闭环](docs/database-knowledge-v13.md)
+- 初始化：`python scripts/knowledge_admin_v13.py init`
+- 检查：`python scripts/knowledge_admin_v13.py check`
+- 统计：`python scripts/knowledge_admin_v13.py summary`
+- 型号登记：`python scripts/knowledge_admin_v13.py add-model --code GL1-336 --category 阻尼转轴 --manufacturer "汇成五金"`
+- 原始文件哈希登记：`python scripts/knowledge_admin_v13.py register-source-file --file "/path/to/catalog.pdf" --kind manufacturer_document --authority user_supplied`
+
+V13 使用独立的 `knowledge_meta.schema_version=1`，不改变 V10 `PRAGMA user_version` 或 V12 `catalog_meta.schema_version`。初始化前备份 `.local/`。主张状态 `accepted` 仅表示通过数据库的证据/复核门槛，不等于产品获得认证。
