@@ -1,0 +1,24 @@
+{
+  "version": "16.0",
+  "local_unit_tests": {
+    "passed": 18,
+    "failed": 0
+  },
+  "source_pdf_audit": {
+    "result": "passed",
+    "source_sha256": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+    "size_bytes": 173132513,
+    "pdf_pages": 195,
+    "target_page_model_occurrences": 2,
+    "crop_reference_hashes_match": true
+  },
+  "ci_status": "triggered_by_commit_and_to_be_checked",
+  "engineering_verification": 0,
+  "physical_measurement": 0,
+  "manufacturer_confirmation": 0,
+  "store_sku_binding": 0,
+  "limitations": [
+    "Automated tests validate evidence schema and source identity, not physical product specifications.",
+    "Source PDF and derived crops are not committed to the public repository."
+  ]
+}

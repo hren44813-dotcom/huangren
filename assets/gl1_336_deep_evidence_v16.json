@@ -1,0 +1,885 @@
+{
+  "version": "16.0",
+  "task": "Single-model deep audit: GL1-336. Depth over breadth; no expansion of model count.",
+  "non_goals": [
+    "Do not modify V13 historical records",
+    "Do not declare engineering parameters verified from catalog transcription alone",
+    "Do not infer a store SKU from a manufacturer part code",
+    "Do not automatically resolve the letter O vs digit 0 in part codes"
+  ],
+  "source": {
+    "source_id": "huicheng_catalog_sha256_13b025c578ae",
+    "filename": "汇成五金画册(1).pdf",
+    "source_type": "user_library_original_manufacturer_catalog",
+    "source_integrity": {
+      "sha256": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+      "size_bytes": 173132513,
+      "pdf_pages": 195,
+      "computed_by": "Python hashlib.sha256 over raw PDF bytes",
+      "result": "MATCH"
+    },
+    "pdf_metadata": {
+      "format": "PDF 1.7",
+      "title": "",
+      "author": "",
+      "creator": "",
+      "producer": "",
+      "creationDate": "",
+      "modDate": ""
+    },
+    "revision_date_status": "unknown_not_found_in_metadata_or_text_search",
+    "page_locator": {
+      "pdf_page_1based": 37,
+      "pdf_page_index_0based": 36,
+      "printed_page_visible": "24",
+      "page_label_metadata": null,
+      "page_dimensions_mupdf_units": [
+        3773.25,
+        2577.75
+      ],
+      "target_model_label_bbox_mupdf_units": [
+        3256,
+        1187.52,
+        3428,
+        1245.25
+      ],
+      "drawing_region_bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "table_region_bbox_mupdf_units": [
+        2550,
+        1740,
+        3260,
+        2420
+      ]
+    },
+    "page_text_layer_sha256": "27787b0902d7189f5fe3eaa51c8d73c0de0adb1093751055d942cf09f3435620",
+    "derived_artifacts": [
+      {
+        "file": "gl1_336_drawing_crop.png",
+        "sha256": "5c65cce4d45131082a740418f5a54383d194739d1ef62e0d6bdb63c72e8fd72c",
+        "bytes": 764017,
+        "width_px": 1540,
+        "height_px": 770,
+        "crop_pdf_user_space": [
+          2420,
+          1160,
+          3520,
+          1710
+        ],
+        "ocr_file": "gl1_336_drawing_crop.ocr.txt",
+        "ocr_sha256": "db2af1b4586143620e1002323c34a1af75007970b742e9a1cc0b62ee94e3e792",
+        "ocr_role": "exploratory_only_not_authoritative"
+      },
+      {
+        "file": "gl1_336_table_crop.png",
+        "sha256": "059ed64229e8c5d0eea80eabc91d1170c3b85e10b2df98e7890d5b50ed49807b",
+        "bytes": 331008,
+        "width_px": 994,
+        "height_px": 952,
+        "crop_pdf_user_space": [
+          2550,
+          1740,
+          3260,
+          2420
+        ],
+        "ocr_file": "gl1_336_table_crop.ocr.txt",
+        "ocr_sha256": "fe149e1bab5582428cf5d137d1caf1ae55d428ff180d9a06cccaf261c65125e5",
+        "ocr_role": "exploratory_only_not_authoritative"
+      }
+    ],
+    "privacy": "source_pdf_and_crops_not_committed_to_public_repository"
+  },
+  "target": {
+    "history_id": "H-a8a2efa05ec7cbe81bff",
+    "model": "GL1-336",
+    "category": "阻尼转轴",
+    "series": "圆盘/其他 GL1",
+    "history_status": "历史型号（SKU待绑定）",
+    "history_source_status": "此前聊天/画册整理档案；verified_document=false",
+    "history_sku_code": null,
+    "history_drawing_source": null,
+    "history_confirmed_by": null,
+    "history_confirmed_at": null
+  },
+  "claims": [
+    {
+      "claim_id": "SRC-001",
+      "field": "original_file_sha256",
+      "source_literal_or_observation": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+      "transcribed_value": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+      "claim_type": "source_integrity",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "raw_pdf_bytes",
+      "bbox_mupdf_units": null,
+      "status": "verified_local_file_integrity",
+      "confidence_note": "high",
+      "limitations": "Proves these bytes are stable; does not authenticate publisher or prove catalog is current.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "SRC-002",
+      "field": "document_revision_date",
+      "source_literal_or_observation": "PDF metadata title/author/creator/producer/creationDate/modDate blank",
+      "transcribed_value": "unknown",
+      "claim_type": "document_control",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "PDF metadata + full-document text search",
+      "bbox_mupdf_units": null,
+      "status": "open_gap",
+      "confidence_note": "high_for_metadata_observation",
+      "limitations": "No revision/date field found in metadata or searched text; cannot establish currency.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "ID-001",
+      "field": "model_name",
+      "source_literal_or_observation": "GL1-336",
+      "transcribed_value": "GL1-336",
+      "claim_type": "model_appears_in_catalog",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "right page / lower product panel",
+      "bbox_mupdf_units": [
+        3256,
+        1187.52,
+        3428,
+        1245.25
+      ],
+      "status": "confirmed_in_source_only",
+      "confidence_note": "high",
+      "limitations": "Does not prove any physical item or store SKU is this model.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DRAW-001",
+      "field": "drawing_presence",
+      "source_literal_or_observation": "dimensioned drawing and product image beside GL1-336",
+      "transcribed_value": "drawing_present",
+      "claim_type": "drawing_presence",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "right printed page 24 / lower panel",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "confirmed_in_source_only",
+      "confidence_note": "high",
+      "limitations": "Catalog drawing presence is not engineering approval or measurement.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-001",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "Ø14.00",
+      "transcribed_value": "Ø14.00",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Raw callout only; exact measured feature must be confirmed against native CAD.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-002",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "Ø12.00",
+      "transcribed_value": "Ø12.00",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Raw callout only; do not infer fit/tolerance beyond the drawing.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-003",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "Ø30.00",
+      "transcribed_value": "Ø30.00",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Catalog-declared diameter; not independently measured.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-004",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "Ø19.50±0.05",
+      "transcribed_value": "Ø19.50±0.05",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "medium_semantics_pending",
+      "limitations": "Leader target/functional meaning should be confirmed from native CAD before calling it a pitch circle.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-005",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "23.00 (horizontal and vertical callouts)",
+      "transcribed_value": "23.00 × 23.00 labels visible",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "medium_semantics_pending",
+      "limitations": "Relationship to the two hole patterns needs engineer review; do not infer center-to-center function solely from OCR.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-006",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "4-M3均布",
+      "transcribed_value": "4-M3 equally distributed",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Thread specification and precise pattern association need native drawing/BOM confirmation.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-007",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "4-Ø3.20",
+      "transcribed_value": "4-Ø3.20",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Hole callout is transcribed from catalog, not independently measured.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-008",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "Ø6.2*90°",
+      "transcribed_value": "Ø6.2*90°",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "medium_semantics_pending",
+      "limitations": "Likely a countersink-style callout, but exact interpretation must be confirmed by engineering; raw notation retained.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-009",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "9.80",
+      "transcribed_value": "9.80",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Dimension line/feature association requires native CAD review.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-010",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "4.50",
+      "transcribed_value": "4.50",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Dimension line/feature association requires native CAD review.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-011",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "2.50",
+      "transcribed_value": "2.50",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Dimension line/feature association requires native CAD review.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-012",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "2.00 appears twice",
+      "transcribed_value": "2.00 × 2 callouts",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Do not merge the two separate dimension lines.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-013",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "12.80",
+      "transcribed_value": "12.80",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Dimension line/feature association requires native CAD review.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "DIM-014",
+      "field": "drawing_dimension_callout",
+      "source_literal_or_observation": "21.00",
+      "transcribed_value": "21.00",
+      "claim_type": "catalog_drawing_transcription",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "drawing crop",
+      "bbox_mupdf_units": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "status": "transcribed_not_independently_verified",
+      "confidence_note": "high_for_visible_glyphs",
+      "limitations": "Dimension line/feature association requires native CAD review.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "MAT-001",
+      "field": "material_label",
+      "source_literal_or_observation": "材料列显示 1215",
+      "transcribed_value": "1215",
+      "claim_type": "catalog_declared_material",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "table region",
+      "bbox_mupdf_units": [
+        2550,
+        1740,
+        3260,
+        2420
+      ],
+      "status": "catalog_declared_not_engineering_verified",
+      "confidence_note": "high_for_printed_text",
+      "limitations": "Do not infer a standard, chemistry, supplier grade or actual batch material without controlled material spec/certificate.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "FIN-001",
+      "field": "surface_finish_variant_1",
+      "source_literal_or_observation": "镀镍 / nickel plating",
+      "transcribed_value": "镀镍",
+      "claim_type": "catalog_declared_surface_finish",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "table region",
+      "bbox_mupdf_units": [
+        2550,
+        1740,
+        3260,
+        2420
+      ],
+      "status": "catalog_declared_not_engineering_verified",
+      "confidence_note": "high_for_printed_text",
+      "limitations": "Does not prove plating thickness, corrosion performance or the finish of a physical batch.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "FIN-002",
+      "field": "surface_finish_variant_2",
+      "source_literal_or_observation": "镀锌镍 / zinc-nickel plating",
+      "transcribed_value": "镀锌镍",
+      "claim_type": "catalog_declared_surface_finish",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "table region",
+      "bbox_mupdf_units": [
+        2550,
+        1740,
+        3260,
+        2420
+      ],
+      "status": "catalog_declared_not_engineering_verified",
+      "confidence_note": "high_for_printed_text",
+      "limitations": "Does not prove coating composition, thickness, salt-spray result or the finish of a physical batch.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "TOR-001",
+      "field": "torque_table_unit",
+      "source_literal_or_observation": "表头“扭矩 N.m”",
+      "transcribed_value": "N.m (catalog notation)",
+      "claim_type": "catalog_declared_torque_unit",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "table region",
+      "bbox_mupdf_units": [
+        2550,
+        1740,
+        3260,
+        2420
+      ],
+      "status": "catalog_declared_not_measured",
+      "confidence_note": "high_for_printed_text",
+      "limitations": "Catalog notation only; no test method, tolerance, calibration or actual measured torque supplied.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "TOR-002",
+      "field": "torque_options",
+      "source_literal_or_observation": "两种表面处理下均列 1,2,3,4,5,6",
+      "transcribed_value": "1–6 N.m options in catalog",
+      "claim_type": "catalog_declared_torque_options",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "table region",
+      "bbox_mupdf_units": [
+        2550,
+        1740,
+        3260,
+        2420
+      ],
+      "status": "catalog_declared_not_measured",
+      "confidence_note": "high_for_table_layout",
+      "limitations": "Do not assert physical torque until part code and test evidence are linked.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "CODE-001",
+      "field": "manufacturer_code_rows",
+      "source_literal_or_observation": "表格列出 03599–03604、03605–03610 两组代码",
+      "transcribed_value": "12 candidate part-code rows",
+      "claim_type": "catalog_declared_part_code",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "table region",
+      "bbox_mupdf_units": [
+        2550,
+        1740,
+        3260,
+        2420
+      ],
+      "status": "prefix_ambiguous_pending_second_review",
+      "confidence_note": "medium_due_text_layer_0_O_conflict",
+      "limitations": "Text layer alternates HC01 and HCO1; image transcription is a candidate, not an approved master code.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "HIST-001",
+      "field": "historical_torque_unit",
+      "source_literal_or_observation": "V13历史记录：扭矩标注单位历史出现 kgf·cm；数值待核",
+      "transcribed_value": "conflicts_with_catalog_page_header_N.m",
+      "claim_type": "cross_source_conflict",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "V13 history record + PDF page 37",
+      "bbox_mupdf_units": null,
+      "status": "open_conflict",
+      "confidence_note": "high_that_both_records_exist",
+      "limitations": "Do not convert or choose a unit until exact SKU/part code and source revision are confirmed.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "SKU-001",
+      "field": "store_sku_binding",
+      "source_literal_or_observation": "history sku_code=null; variant_options=[]",
+      "transcribed_value": "no confirmed store SKU binding",
+      "claim_type": "identity_mapping_gap",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "V13 history record",
+      "bbox_mupdf_units": null,
+      "status": "open_gap",
+      "confidence_note": "high",
+      "limitations": "Need store listing SKU export plus warehouse/ERP material-code mapping; catalog part codes are not store SKUs.",
+      "independent_reviewer": null
+    },
+    {
+      "claim_id": "EXT-001",
+      "field": "official_web_crosscheck",
+      "source_literal_or_observation": "official site indexed search did not surface a GL1-336-specific product page",
+      "transcribed_value": "no independent web confirmation found in this search",
+      "claim_type": "external_crosscheck",
+      "source_id": "huicheng_catalog_sha256_13b025c578ae",
+      "pdf_page_1based": 37,
+      "printed_page": "24",
+      "region": "official site/search result",
+      "bbox_mupdf_units": null,
+      "status": "inconclusive",
+      "confidence_note": "low_for_absence",
+      "limitations": "Search non-result is not proof the product page does not exist; manufacturer confirmation remains required.",
+      "independent_reviewer": null
+    }
+  ],
+  "catalog_variant_rows": [
+    {
+      "surface_finish_catalog": "镀镍",
+      "torque_catalog_value": 1,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03599",
+      "visual_transcription_candidate": "HC01-03599",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀镍",
+      "torque_catalog_value": 2,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HCO1-03600",
+      "visual_transcription_candidate": "HC01-03600",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀镍",
+      "torque_catalog_value": 3,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HCO1-03601",
+      "visual_transcription_candidate": "HC01-03601",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀镍",
+      "torque_catalog_value": 4,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03602",
+      "visual_transcription_candidate": "HC01-03602",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀镍",
+      "torque_catalog_value": 5,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03603",
+      "visual_transcription_candidate": "HC01-03603",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀镍",
+      "torque_catalog_value": 6,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03604",
+      "visual_transcription_candidate": "HC01-03604",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀锌镍",
+      "torque_catalog_value": 1,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HCO1-03605",
+      "visual_transcription_candidate": "HC01-03605",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀锌镍",
+      "torque_catalog_value": 2,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HCO1-03606",
+      "visual_transcription_candidate": "HC01-03606",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀锌镍",
+      "torque_catalog_value": 3,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03607",
+      "visual_transcription_candidate": "HC01-03607",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀锌镍",
+      "torque_catalog_value": 4,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03608",
+      "visual_transcription_candidate": "HC01-03608",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀锌镍",
+      "torque_catalog_value": 5,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03609",
+      "visual_transcription_candidate": "HC01-03609",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    },
+    {
+      "surface_finish_catalog": "镀锌镍",
+      "torque_catalog_value": 6,
+      "torque_catalog_unit_raw": "N.m",
+      "pdf_text_layer_code": "HC01-03610",
+      "visual_transcription_candidate": "HC01-03610",
+      "code_status": "needs_second_person_and_BOM_confirmation",
+      "history_sku_binding": null
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "CON-001",
+      "topic": "torque_unit",
+      "evidence_a": {
+        "source": "history_reference_v13.json",
+        "literal": "扭矩标注单位历史出现 kgf·cm；数值待核"
+      },
+      "evidence_b": {
+        "source": "catalog PDF page 37 / printed page 24",
+        "literal": "表头“扭矩 N.m”，列出 1–6"
+      },
+      "status": "OPEN",
+      "rule": "Do not convert, overwrite or publish a torque unit as verified. First identify the exact part code and confirm the applicable drawing revision with manufacturer/engineering."
+    },
+    {
+      "conflict_id": "CON-002",
+      "topic": "manufacturer_part_code_prefix_zero_vs_letter_O",
+      "evidence_a": {
+        "source": "PDF text layer",
+        "literal_forms": [
+          "HC01-03599",
+          "HCO1-03600",
+          "HCO1-03601",
+          "HC01-03602",
+          "HC01-03603",
+          "HC01-03604",
+          "HCO1-03605",
+          "HCO1-03606",
+          "HC01-03607",
+          "HC01-03608",
+          "HC01-03609",
+          "HC01-03610"
+        ]
+      },
+      "evidence_b": {
+        "source": "rendered table crop",
+        "literal": "visual transcription candidate HC01-03599 through HC01-03610"
+      },
+      "status": "OPEN",
+      "rule": "Do not canonically normalize O to 0 until manufacturer BOM/label or second reviewer confirms the exact part numbers."
+    },
+    {
+      "conflict_id": "CON-003",
+      "topic": "dimension_semantics",
+      "evidence_a": {
+        "source": "drawing page 37",
+        "literal": "Ø19.50±0.05; 23.00 in two orthogonal dimensions; 4-M3均布; 4-Ø3.20; Ø6.2*90°"
+      },
+      "evidence_b": {
+        "source": "native CAD / controlled drawing",
+        "literal": "not provided"
+      },
+      "status": "OPEN",
+      "rule": "Record visible labels verbatim; do not assign functional geometry/PCD/fit meaning without native CAD or engineer review."
+    },
+    {
+      "conflict_id": "CON-004",
+      "topic": "catalog_revision_currency",
+      "evidence_a": {
+        "source": "PDF metadata and searched text",
+        "literal": "no title/author/date/revision found"
+      },
+      "evidence_b": {
+        "source": "manufacturer controlled document register",
+        "literal": "not provided"
+      },
+      "status": "OPEN",
+      "rule": "A correct hash proves which bytes were reviewed, not that this is the current approved revision."
+    },
+    {
+      "conflict_id": "CON-005",
+      "topic": "physical_item_and_store_sku_identity",
+      "evidence_a": {
+        "source": "catalog",
+        "literal": "GL1-336 plus 12 candidate part-code rows"
+      },
+      "evidence_b": {
+        "source": "physical sample, packaging, ERP, shop SKU export",
+        "literal": "not provided"
+      },
+      "status": "OPEN",
+      "rule": "No physical item or store SKU may be bound until original identifiers are cross-walked."
+    }
+  ],
+  "external_crosscheck": {
+    "query": "site:huichenglock.com \"GL1-336\" 汇成五金",
+    "checked_at": "2026-10-28",
+    "official_domain": "https://www.huichenglock.com/",
+    "result": "Current indexed results surfaced the general official website but no GL1-336-specific product page. This is inconclusive, not proof of absence.",
+    "independent_confirmation": false
+  },
+  "verification_matrix": {
+    "file_byte_integrity": "verified_locally",
+    "model_label_present_in_catalog": "confirmed_from_page_only",
+    "drawing_dimensions": "catalog_transcribed_not_independently_verified",
+    "material_1215": "catalog_declared_not_engineering_verified",
+    "surface_finishes": "catalog_declared_not_batch_verified",
+    "torque_values": "catalog_declared_not_measured",
+    "part_codes": "prefix_ambiguous_pending_second_review",
+    "current_controlled_revision": "unknown",
+    "physical_product_identity": "not_verified",
+    "store_sku_binding": "not_verified",
+    "independent_engineer_review": "not_performed",
+    "manufacturer_confirmation": "not_obtained",
+    "independent_measurement": "not_performed"
+  },
+  "next_primary_materials_required": [
+    "Manufacturer-controlled drawing/CAD for GL1-336 with document number, revision and issue date",
+    "Manufacturer BOM or ERP export for part codes 03599–03610 and explicit 0/O confirmation",
+    "Physical sample photos showing all sides and any label/marking; tie sample to one manufacturer code",
+    "Store SKU export and warehouse/ERP crosswalk to manufacturer code",
+    "Independent caliper readings for agreed dimensions, with instrument ID/resolution and repeat readings",
+    "Torque test report for the exact code/finish/torque option, including test method, tolerance and calibration traceability"
+  ],
+  "evidence_rules": {
+    "source_integrity_is_not_source_authenticity": true,
+    "catalog_claim_is_not_measurement": true,
+    "search_nonresult_is_not_absence_proof": true,
+    "unknown_is_not_false": true,
+    "conflicts_must_remain_open_until_resolved": true,
+    "no_claim_may_be_marked_independently_engineering_verified_in_this_run": true
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "version": "16.0",
+  "task_scope": "GL1-336 only; depth not breadth",
+  "source_sha256": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+  "source_size_bytes": 173132513,
+  "pdf_pages": 195,
+  "pdf_page_1based": 37,
+  "printed_page": "24",
+  "text_layer_model_occurrences": 2,
+  "claim_count": 27,
+  "catalog_variant_rows": 12,
+  "open_conflicts": [
+    "CON-001",
+    "CON-002",
+    "CON-003",
+    "CON-004",
+    "CON-005"
+  ],
+  "independent_engineering_verifications": 0,
+  "physical_measurements": 0,
+  "manufacturer_confirmations": 0,
+  "store_sku_bindings": 0,
+  "automated_local_source_checks": {
+    "sha256_match": true,
+    "size_match": true,
+    "page_count_match": true,
+    "target_page_model_text_found": true,
+    "torque_header_found": true,
+    "material_1215_found": true,
+    "crop_hashes_match_reference": true
+  },
+  "limits": [
+    "SHA-256 proves byte identity only, not publisher authenticity or revision currency.",
+    "Catalog values are not independent measurements.",
+    "No independent engineer, manufacturer confirmation, physical sample, BOM or store SKU export was available.",
+    "OCR/text-layer O-versus-0 discrepancy remains open."
+  ]
+}

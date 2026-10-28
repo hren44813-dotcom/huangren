@@ -1,0 +1,86 @@
+{
+  "source_id": "huicheng_catalog_sha256_13b025c578ae",
+  "filename": "汇成五金画册(1).pdf",
+  "source_type": "user_library_original_manufacturer_catalog",
+  "source_integrity": {
+    "sha256": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+    "size_bytes": 173132513,
+    "pdf_pages": 195,
+    "computed_by": "Python hashlib.sha256 over raw PDF bytes",
+    "result": "MATCH"
+  },
+  "pdf_metadata": {
+    "format": "PDF 1.7",
+    "title": "",
+    "author": "",
+    "creator": "",
+    "producer": "",
+    "creationDate": "",
+    "modDate": ""
+  },
+  "revision_date_status": "unknown_not_found_in_metadata_or_text_search",
+  "page_locator": {
+    "pdf_page_1based": 37,
+    "pdf_page_index_0based": 36,
+    "printed_page_visible": "24",
+    "page_label_metadata": null,
+    "page_dimensions_mupdf_units": [
+      3773.25,
+      2577.75
+    ],
+    "target_model_label_bbox_mupdf_units": [
+      3256,
+      1187.52,
+      3428,
+      1245.25
+    ],
+    "drawing_region_bbox_mupdf_units": [
+      2420,
+      1160,
+      3520,
+      1710
+    ],
+    "table_region_bbox_mupdf_units": [
+      2550,
+      1740,
+      3260,
+      2420
+    ]
+  },
+  "page_text_layer_sha256": "27787b0902d7189f5fe3eaa51c8d73c0de0adb1093751055d942cf09f3435620",
+  "derived_artifacts": [
+    {
+      "file": "gl1_336_drawing_crop.png",
+      "sha256": "5c65cce4d45131082a740418f5a54383d194739d1ef62e0d6bdb63c72e8fd72c",
+      "bytes": 764017,
+      "width_px": 1540,
+      "height_px": 770,
+      "crop_pdf_user_space": [
+        2420,
+        1160,
+        3520,
+        1710
+      ],
+      "ocr_file": "gl1_336_drawing_crop.ocr.txt",
+      "ocr_sha256": "db2af1b4586143620e1002323c34a1af75007970b742e9a1cc0b62ee94e3e792",
+      "ocr_role": "exploratory_only_not_authoritative"
+    },
+    {
+      "file": "gl1_336_table_crop.png",
+      "sha256": "059ed64229e8c5d0eea80eabc91d1170c3b85e10b2df98e7890d5b50ed49807b",
+      "bytes": 331008,
+      "width_px": 994,
+      "height_px": 952,
+      "crop_pdf_user_space": [
+        2550,
+        1740,
+        3260,
+        2420
+      ],
+      "ocr_file": "gl1_336_table_crop.ocr.txt",
+      "ocr_sha256": "fe149e1bab5582428cf5d137d1caf1ae55d428ff180d9a06cccaf261c65125e5",
+      "ocr_role": "exploratory_only_not_authoritative"
+    }
+  ],
+  "privacy": "source_pdf_and_crops_not_committed_to_public_repository"
+}

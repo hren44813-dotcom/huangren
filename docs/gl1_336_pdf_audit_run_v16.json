@@ -1,0 +1,71 @@
+{
+  "registry_validation": {
+    "ok": true,
+    "version": "16.0",
+    "target_model": "GL1-336",
+    "claims": 27,
+    "catalog_part_code_rows": 12,
+    "open_conflicts": [
+      "CON-001",
+      "CON-002",
+      "CON-003",
+      "CON-004",
+      "CON-005"
+    ],
+    "independent_engineering_verifications": 0,
+    "errors": []
+  },
+  "pdf_audit": {
+    "version": "16.0",
+    "source_sha256": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+    "source_size_bytes": 173132513,
+    "pdf_pages": 195,
+    "pdf_page_1based": 37,
+    "printed_page_visible": "24",
+    "exact_model_text_occurrences": 2,
+    "catalog_torque_header_found": true,
+    "catalog_material_label_found": true,
+    "text_layer_code_forms": [
+      "HC01-01241",
+      "HC01-03599",
+      "HC01-03602",
+      "HC01-03603",
+      "HC01-03604",
+      "HC01-03607",
+      "HC01-03608",
+      "HC01-03609",
+      "HC01-03610",
+      "HCO1-01243",
+      "HCO1-01379",
+      "HCO1-03600",
+      "HCO1-03601",
+      "HCO1-03605",
+      "HCO1-03606"
+    ],
+    "rendered_crops": [
+      {
+        "file": "gl1_336_drawing_crop.png",
+        "sha256": "5c65cce4d45131082a740418f5a54383d194739d1ef62e0d6bdb63c72e8fd72c",
+        "reference_sha256": "5c65cce4d45131082a740418f5a54383d194739d1ef62e0d6bdb63c72e8fd72c",
+        "reference_hash_matches": true,
+        "bytes": 764017,
+        "width_px": 1540,
+        "height_px": 770
+      },
+      {
+        "file": "gl1_336_table_crop.png",
+        "sha256": "059ed64229e8c5d0eea80eabc91d1170c3b85e10b2df98e7890d5b50ed49807b",
+        "reference_sha256": "059ed64229e8c5d0eea80eabc91d1170c3b85e10b2df98e7890d5b50ed49807b",
+        "reference_hash_matches": true,
+        "bytes": 331008,
+        "width_px": 994,
+        "height_px": 952
+      }
+    ],
+    "source_revision_current": "unknown",
+    "physical_item_identity": "not_verified",
+    "engineering_parameters": "catalog_transcribed_not_independently_verified",
+    "store_sku_binding": "not_verified",
+    "warning": "Hash verifies the supplied bytes only; catalog transcription is not an engineering test."
+  }
+}
