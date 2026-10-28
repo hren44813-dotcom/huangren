@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -86,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             "results": results,
         }, ensure_ascii=False, indent=2))
         return 0
-    except (ValueError, RuntimeError, OSError) as exc:
+    except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
         print(f"导入供应商资料失败：{exc}", file=sys.stderr)
         return 1
 

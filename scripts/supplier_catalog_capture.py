@@ -223,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
         listing_summary = save_listing_outputs(output)
         detail_summary = write_detail_exports(output)
         print(json.dumps({"listing": listing_summary, "details": detail_summary}, ensure_ascii=False, indent=2))
-        return 0 if listing_summary.get("missing_page_count") == 0 and detail_summary.get("is_complete") else 2
+        return 0 if listing_summary.get("audit_status") == "complete" and detail_summary.get("is_complete") else 2
     except KeyboardInterrupt:
         print("\n已中止；已保存的检查点会保留。", file=sys.stderr)
         return 130
