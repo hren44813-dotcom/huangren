@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from ecom_images.database_v9 import DEFAULT_DB  # noqa: E402
+from ecom_images.catalog_v12 import initialize_catalog  # noqa: E402
 from ecom_images.knowledge_ingest_v13 import import_document, initialize_ingestion  # noqa: E402
 from ecom_images.knowledge_schema_v13 import initialize_knowledge  # noqa: E402
 
@@ -56,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
                 "creates_accepted_claims": False,
             }, ensure_ascii=False, indent=2))
             return 0
+        initialize_catalog(args.database)
         initialize_knowledge(args.database)
         initialize_ingestion(args.database)
         results = []

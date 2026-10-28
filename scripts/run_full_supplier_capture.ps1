@@ -18,6 +18,8 @@ $CatalogPath = Join-Path $CaptureDir "catalog.json"
 $PageOnePath = Join-Path $PagesDir "page_001.json"
 $SnapshotPath = Join-Path $Root "docs/supplier-research/dgdeler_product_list_page1_2026-10-28.json"
 $DatabasePath = Join-Path $Root ".local/supplier_catalog.sqlite3"
+$KnowledgeDB = Join-Path $Root ".local/huangren.sqlite3"
+$MarkdownDir = Join-Path $CaptureDir "details_markdown"
 $ExportDir = Join-Path $CaptureDir "exports"
 
 function Invoke-PythonStep {
@@ -89,12 +91,34 @@ $syncCode = Invoke-PythonStep -Label "Sync SQLite and export CSV" -Arguments @(
     "--capture-dir", $CaptureDir,
     "--snapshot-json", $SnapshotPath,
     "--database", $DatabasePath,
-    "--export-dir", $ExportDir
+    "--export-dir", $ExportDir,
+    "--require-details"
 )
 
 $databaseAuditCode = Invoke-PythonStep -Label "Require database and collection completeness" -Arguments @(
     "scripts/sync_supplier_catalog_db.py", "audit",
-    "--database", $DatabasePath, "--require-complete"
+    "--database", $DatabasePath, "--require-complete", "--require-details"
+)
+
+$independentCode = Invoke-PythonStep -Label "Independently verify capture source files" -Arguments @(
+    "scripts/verify_supplier_pipeline.py", "--capture-dir", $CaptureDir,
+    "--require-details", "--expect-status", "complete",
+    "--report", (Join-Path $CaptureDir "independent_validation.json")
+)
+
+$knowledgeCode = 2
+if (Test-Path $MarkdownDir) {
+    $markdownFiles = @(Get-ChildItem -Path $MarkdownDir -Filter "*.md" -File)
+    if ($markdownFiles.Count -gt 0) {
+        $knowledgeCode = Invoke-PythonStep -Label "Index original detail documents in V13 (unverified)" -Arguments @(
+            "scripts/import_supplier_capture_v13.py", "--capture-dir", $MarkdownDir,
+            "--database", $KnowledgeDB
+        )
+    }
+}
+if ($knowledgeCode -eq 2) {
+    Write-Host "No detail Markdown documents available to index in V13." -ForegroundColor Yellow
+}
 )
 
 Write-Host ""
@@ -102,10 +126,11 @@ Write-Host "===== Output locations =====" -ForegroundColor Cyan
 Write-Host "Capture checkpoints: $CaptureDir"
 Write-Host "SQLite database:    $DatabasePath"
 Write-Host "CSV exports:        $ExportDir"
+Write-Host "V13 knowledge DB:   $KnowledgeDB"
 Write-Host "Listing audit:      $(Join-Path $CaptureDir 'catalog_audit.json')"
 Write-Host "Detail audit:       $(Join-Path $CaptureDir 'details_audit.json')"
 
-$codes = @($listingCode, $detailCode, $finalCaptureAuditCode, $syncCode, $databaseAuditCode)
+$codes = @($listingCode, $detailCode, $finalCaptureAuditCode, $syncCode, $databaseAuditCode, $independentCode, $knowledgeCode)
 if ($codes | Where-Object { $_ -ne 0 }) {
     Write-Host "Collection remains partial or a step failed. Existing checkpoints and exports are retained; review the audit JSON before retrying." -ForegroundColor Yellow
     exit 2
