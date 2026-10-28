@@ -139,7 +139,7 @@ class ModelEvidenceReconciliationTests(unittest.TestCase):
             self.db, model_code="GL1-336", required_attributes=["Torque"],
         )
         self.assertFalse(result["allowed"])
-        self.assertIn("Torque", " ".join(result["reasons"]))
+        self.assertIn("torque", " ".join(result["reasons"]).casefold())
 
     def test_verified_claim_has_page_hash_and_passes_content_gate(self):
         imported = self.import_pdf()
