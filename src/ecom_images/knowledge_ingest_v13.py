@@ -773,7 +773,7 @@ def search_knowledge(path:str|Path=DEFAULT_DB,*,query:str="",model_code:str="",a
             rows=conn.execute("""SELECT s.id,s.code,s.model,p.name,p.category,st.name,
                 COALESCE((SELECT cm.model_code FROM catalog_sku_model_links l JOIN catalog_models cm ON cm.id=l.model_id
                  WHERE l.sku_id=s.id AND (SELECT ev.state FROM catalog_sku_model_events ev WHERE ev.link_id=l.id
-                 ORDER BY ev.event_id DESC LIMIT 1)='confirmed' ORDER BY l.created_utc LIMIT 1,'')
+                 ORDER BY ev.event_id DESC LIMIT 1)='confirmed' ORDER BY l.created_utc LIMIT 1),'')
                 FROM catalog_skus s JOIN catalog_products p ON p.id=s.product_id
                 JOIN catalog_stores st ON st.id=s.store_id
                 WHERE INSTR(UPPER(s.model),UPPER(?))>0 OR EXISTS(
