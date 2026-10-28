@@ -242,3 +242,17 @@ python scripts/catalog_admin.py import-csv --input sku_catalog.csv --apply
 - 原始文件哈希登记：`python scripts/knowledge_admin_v13.py register-source-file --file "/path/to/catalog.pdf" --kind manufacturer_document --authority user_supplied`
 
 V13 使用独立的 `knowledge_meta.schema_version=1`，不改变 V10 `PRAGMA user_version` 或 V12 `catalog_meta.schema_version`。初始化前备份 `.local/`。主张状态 `accepted` 仅表示通过数据库的证据/复核门槛，不等于产品获得认证。
+
+
+## V13 文档导入与可追溯检索
+
+在 V13 知识库上增量支持 PDF、DOCX、Markdown、TXT、XLSX、XLSM、XLS 的本地导入、文本索引、精确型号搜索和参数检索。PDF 结果包含 1-based 物理页码和文字行 bbox；Excel 返回工作表/单元格范围；Markdown/TXT 返回行号；DOCX 返回段落、表格行和标题路径。扫描 PDF 会标记缺少文字层，本版本不会声称 OCR 已完成。
+
+```bash
+python scripts/knowledge_ingest_v13.py init
+python scripts/knowledge_ingest_v13.py import-file --file "资料/GL1-336产品目录.pdf" --kind manufacturer_document --authority user_supplied
+python scripts/knowledge_ingest_v13.py search --model GL1-336 --attribute 扭矩
+python scripts/knowledge_ingest_v13.py audit
+```
+
+详细说明见 [V13 文档导入、解析与证据定位](docs/database-knowledge-ingestion-v13.md)。原始资料默认存储在被 Git 忽略的 `.local/knowledge_sources/`；导入只建立来源索引，不自动生成已接受的参数主张，也不自动绑定同名 SKU 与制造商型号。旧版 Word `.doc` 需先另存为 `.docx`。
