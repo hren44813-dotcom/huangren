@@ -1,0 +1,36 @@
+{
+  "version": "15.0",
+  "executed_at_local": "2026-10-28",
+  "unit_tests": {
+    "passed": 15,
+    "failed": 0,
+    "runner": "python unittest discover"
+  },
+  "sqlite_smoke_test": {
+    "initialized": true,
+    "dry_run_added": {
+      "history": 74,
+      "sources": 1,
+      "claims": 87
+    },
+    "actual_import_added": {
+      "history": 74,
+      "sources": 1,
+      "claims": 87
+    },
+    "integrity_check": "ok",
+    "formal_catalog_skus_mutated": false
+  },
+  "html_javascript_syntax_check": "passed with node --check",
+  "original_source_sha256": "13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2",
+  "original_source_hash_and_size": "match",
+  "pdf_pages_text_searched": 195,
+  "pdf_pages_manually_reviewed": 16,
+  "engineering_parameter_verifications": 0,
+  "commercial_sku_verifications": 0,
+  "limitations": [
+    "Automated checks validate registry consistency, not the physical truth of product specifications.",
+    "Source PDF is not included in the package or public repository.",
+    "Browser interaction was not tested in a real graphical browser; only JavaScript syntax was checked."
+  ]
+}

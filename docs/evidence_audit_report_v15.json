@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "history_records": 74,
+  "model_records": 60,
+  "source_count": 1,
+  "source_sha256_count": 1,
+  "claims_count": 87,
+  "unique_pdf_pages_reviewed": 16,
+  "records_with_any_source_anchor": 42,
+  "records_with_exact_model_listed": 35,
+  "records_without_exact_model_anchor": 39,
+  "claim_type_counts": {
+    "exact_model_listed": 39,
+    "family_variant_listed": 32,
+    "candidate_alias": 1,
+    "drawing_present": 14,
+    "dimension_table_present": 1
+  },
+  "independent_engineering_verifications": 0,
+  "confirmed_commercial_skus": 0
+}
