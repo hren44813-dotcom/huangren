@@ -21,9 +21,9 @@ from typing import Any
 SCHEMA_VERSION = 1
 SUPPLIER_NAME = "Dongguan Dele Hardware Technology Co., Ltd."
 SUPPLIER_URL = "https://dgdeler.en.alibaba.com/productlist.html"
-DEFAULT_DB = Path(__file__).resolve().parents[2] / ".local" / "supplier_catalog.sqlite3"
-DEFAULT_CAPTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "supplier_captures" / "dgdeler"
-DEFAULT_SNAPSHOT = Path(__file__).resolve().parents[2] / "docs" / "supplier-research" / "dgdeler_product_list_page1_2026-10-28.json"
+DEFAULT_DB = Path(__file__).resolve().parents[3] / ".local" / "supplier_catalog.sqlite3"
+DEFAULT_CAPTURE_DIR = Path(__file__).resolve().parents[3] / "data" / "supplier_captures" / "dgdeler"
+DEFAULT_SNAPSHOT = Path(__file__).resolve().parents[3] / "docs" / "supplier-research" / "dgdeler_product_list_page1_2026-10-28.json"
 
 _DDL = (
     """CREATE TABLE supplier_catalog_meta (
