@@ -9,7 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from ecom_images.supplier_catalog_capture import (  # noqa: E402
-    is_challenge, normalize_url, parse_listing_item, save_listing_outputs,
+    build_listing_audit, enrich_detail_payload, is_challenge, normalize_url,
+    parse_listing_item, render_detail_markdown, save_listing_outputs, write_detail_exports,
 )
 
 
@@ -70,6 +71,113 @@ class SupplierCatalogCaptureTests(unittest.TestCase):
             self.assertEqual(len(catalog["items"]), 1)
             with (output / "catalog.csv").open(encoding="utf-8-sig", newline="") as stream:
                 self.assertEqual(len(list(csv.DictReader(stream))), 1)
+
+
+    def test_enrich_detail_extracts_jsonld_attributes_price_moq_and_sales(self):
+        """Structured fields remain seller observations and keep source locators."""
+        detail = {
+            "title": "CL226 Cabinet Hinge",
+            "canonical_url": "https://example.com/CL226",
+            "image_urls": ["https://example.com/hinge.png"],
+            "table_rows": [["Material", "SUS304"], ["Hole Distance", "40 mm", "Thickness", "2 mm"]],
+            "definition_rows": [["Color", "Silver"]],
+            "option_groups": [{"kind": "select", "group": "Color", "options": [
+                {"label": "Silver", "value": "silver", "selected": True, "disabled": False}
+            ]}],
+            "json_ld": [{"script_index": 1, "data": {
+                "@context": "https://schema.org", "@type": "Product", "name": "CL226 Cabinet Hinge",
+                "sku": "CL226-304", "mpn": "CL226", "brand": {"@type": "Brand", "name": "Dele"},
+                "offers": {"@type": "Offer", "price": "3.46", "priceCurrency": "CNY",
+                           "availability": "https://schema.org/InStock"},
+                "additionalProperty": [{"@type": "PropertyValue", "name": "Material", "value": "SUS304"}]
+            }}],
+            "json_ld_errors": [],
+        }
+        result = enrich_detail_payload(detail, "Price CN¥3.46-4.98; MOQ: 1 piece; 11 sold")
+        self.assertEqual(result["structured_product"]["sku"], "CL226-304")
+        self.assertEqual(result["structured_product"]["brand"], "Dele")
+        self.assertEqual(result["structured_product"]["price_currency"], "CNY")
+        self.assertEqual(result["visible_price_candidates"][0]["price_max"], 4.98)
+        self.assertEqual(result["visible_moq"]["quantity"], 1)
+        self.assertEqual(result["visible_sales_count"], 11)
+        self.assertTrue(any(pair["key"] == "Material" for pair in result["attribute_pairs"]))
+        self.assertTrue(result["detail_quality"]["has_json_ld_product"])
+        self.assertEqual(result["detail_quality"]["status"], "captured_unverified")
+
+    def test_render_detail_markdown_keeps_provenance_and_unverified_status(self):
+        """V13-ready source text contains original URLs and explicit review status."""
+        record = {
+            "item_id": "abc123",
+            "listing_title": "CL226 Cabinet Hinge",
+            "listing_url": "https://example.com/listing",
+            "detail_url": "https://example.com/detail",
+            "captured_at": "2026-10-28T00:00:00+00:00",
+            "verification_status": "visible_detail_page_observation_unverified",
+            "detail_page": {"title": "CL226", "canonical_url": "https://example.com/canonical",
+                            "structured_product": {"sku": "CL226-304", "brand": "Dele"},
+                            "attribute_pairs": [{"key": "Material", "value": "SUS304", "source_locator": "table_row_1"}]},
+        }
+        markdown = render_detail_markdown(record, "Material SUS304")
+        self.assertIn("https://example.com/detail", markdown)
+        self.assertIn("未经独立验证", markdown)
+        self.assertIn("CL226-304", markdown)
+        self.assertIn("table_row_1", markdown)
+
+    def test_listing_audit_reports_missing_pages_and_pagination_mismatch(self):
+        """A visible 1/3 pagination marker must not be mistaken for a complete capture."""
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+            pages = output / "pages"
+            pages.mkdir()
+            page = {
+                "page_number": 1, "pagination_text": "1/3",
+                "items": [{"product_url": "https://example.com/product-1"}],
+            }
+            (pages / "page_001.json").write_text(json.dumps(page), encoding="utf-8")
+            audit = build_listing_audit(output)
+            self.assertEqual(audit["expected_page_count"], 3)
+            self.assertEqual(audit["missing_page_numbers"], [2, 3])
+            self.assertFalse(audit["is_complete"])
+            self.assertEqual(audit["status"], "partial")
+
+    def test_detail_exports_write_index_attributes_and_coverage_audit(self):
+        """Captured details become spreadsheet exports and one Markdown source per product."""
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+            item_id = "0123456789abcdef"
+            catalog = {"items": [{
+                "item_id": item_id, "title": "CL226 Hinge",
+                "product_url": "https://example.com/product",
+            }]}
+            (output / "catalog.json").write_text(json.dumps(catalog), encoding="utf-8")
+            details = output / "details"
+            details.mkdir()
+            record = {
+                "item_id": item_id, "listing_title": "CL226 Hinge",
+                "listing_url": "https://example.com/product",
+                "detail_url": "https://example.com/detail",
+                "captured_at": "2026-10-28T00:00:00+00:00",
+                "verification_status": "visible_detail_page_observation_unverified",
+                "detail_page": {
+                    "title": "CL226 Hinge", "canonical_url": "https://example.com/detail",
+                    "body_text_file": f"{item_id}.txt",
+                    "table_rows": [["Material", "SUS304"]],
+                    "definition_rows": [], "json_ld": [], "json_ld_errors": [],
+                    "option_groups": [], "image_urls": ["https://example.com/hinge.png"],
+                },
+            }
+            (details / f"{item_id}.json").write_text(json.dumps(record), encoding="utf-8")
+            (details / f"{item_id}.txt").write_text("CL226 Hinge Material SUS304", encoding="utf-8")
+            audit = write_detail_exports(output)
+            self.assertTrue(audit["is_complete"])
+            self.assertEqual(audit["valid_detail_count"], 1)
+            self.assertTrue((output / "details_index.csv").exists())
+            self.assertTrue((output / "detail_attributes.csv").exists())
+            self.assertTrue((output / "details_markdown" / f"{item_id}.md").exists())
+            with (output / "detail_attributes.csv").open(encoding="utf-8-sig", newline="") as stream:
+                rows = list(csv.DictReader(stream))
+            self.assertEqual(rows[0]["attribute"], "Material")
+            self.assertEqual(rows[0]["verification_status"], "seller_page_observation_unverified")
 
 
 if __name__ == "__main__":
