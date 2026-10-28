@@ -112,12 +112,12 @@ def _load_inputs(capture_dir: Path, snapshot_json: Path | None) -> tuple[dict, l
             live = _load_json(catalog_path)
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             errors.append({"stage": "catalog", "item_ref": str(catalog_path), "error_type": type(exc).__name__, "message": str(exc)})
-    catalog = dict(snapshot or live)
     if batch is not None and live and live.get("capture_batch_id") != batch["batch_id"]:
         errors.append({"stage": "capture_batch", "item_ref": str(catalog_path),
                        "error_type": "BatchMismatch",
                        "message": "目录不属于当前采集批次，旧商品不会进入本批次数据库"})
         live = {}
+    catalog = dict(snapshot or live)
     if live:
         catalog = dict(live)
         live_items = live.get("items", []) if isinstance(live.get("items"), list) else []

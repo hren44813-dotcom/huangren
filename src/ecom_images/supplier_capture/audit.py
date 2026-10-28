@@ -88,7 +88,7 @@ def build_listing_audit(output: Path) -> dict:
         "unique_product_count": len(set(all_urls)),
         "duplicate_product_occurrences": duplicate_occurrences,
         "is_complete": complete,
-        "status": "complete" if complete else ("partial" if page_records else "not_started"),
+        "status": "complete" if complete else ("partial" if page_records or batch is not None else "not_started"),
         "limitations": [
             "Completeness is measured against the pagination total visible in captured pages.",
             "A captured page with zero visible product cards requires manual review.",

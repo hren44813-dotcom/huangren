@@ -150,6 +150,10 @@ class DetailRecoveryTests(unittest.TestCase):
             self.visited.append(url)
         def wait_for_timeout(self, delay):
             pass
+        def locator(self, selector):
+            return self
+        def inner_text(self, timeout=10000):
+            return "Real industrial hinge product detail"
         def evaluate(self, js):
             return {"title": "CL226", "body_text": "Real industrial hinge material SUS304"}
 
