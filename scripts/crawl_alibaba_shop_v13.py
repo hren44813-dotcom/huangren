@@ -38,7 +38,7 @@ CAPTCHA_MARKERS = ("unusual traffic", "slide to verify", "captcha", "verify you 
 FIELD_PATTERNS = {
     "model_or_sku": re.compile(r"\b(?:model|item\s*(?:no|number)|sku|part\s*(?:no|number))\s*[:：#-]?\s*([A-Z0-9][A-Z0-9._/-]{1,60})", re.I),
     "material": re.compile(r"\b(?:material|body\s*material|finish\s*material)\s*[:：]\s*([^|;\n]{1,100})", re.I),
-    "dimensions": re.compile(r"\b(?:dimension|size|overall\s*length|hole\s*distance|mounting\s*hole|cut[- ]?out)\s*[:：]\s*([^|;\n]{1,120})", re.I),
+    "dimensions": re.compile(r"\b(?:dimensions?|size|overall\s*length|hole\s*distance|mounting\s*hole|cut[- ]?out)\s*[:：]\s*([^|;\n]{1,120})", re.I),
     "moq": re.compile(r"\b(?:minimum\s*order\s*quantity|moq|min\.?\s*order|minimum\s*order)\s*[:：]?\s*([^|;\n]{1,80})", re.I),
     "price": re.compile(r"\b(?:price|unit\s*price|price\s*range)\s*[:：]?\s*([^|;\n]{1,100})", re.I),
     "specification": re.compile(r"\b(?:specification|specifications|torque|load\s*capacity|opening\s*angle|salt\s*spray)\s*[:：]\s*([^|;\n]{1,120})", re.I),
