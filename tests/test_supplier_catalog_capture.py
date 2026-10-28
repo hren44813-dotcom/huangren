@@ -180,5 +180,45 @@ class SupplierCatalogCaptureTests(unittest.TestCase):
             self.assertEqual(rows[0]["verification_status"], "seller_page_observation_unverified")
 
 
+    def test_listing_audit_flags_empty_page_for_manual_review(self):
+        """A page with no visible products must not pass the completeness audit."""
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+            pages = output / "pages"
+            pages.mkdir()
+            (pages / "page_001.json").write_text(json.dumps({
+                "page_number": 1, "pagination_text": "1/1", "items": []
+            }), encoding="utf-8")
+            audit = build_listing_audit(output)
+            self.assertEqual(audit["missing_page_numbers"], [])
+            self.assertEqual(audit["pages_with_no_visible_products"], [1])
+            self.assertFalse(audit["is_complete"])
+
+    def test_detail_audit_flags_empty_body_text_file(self):
+        """An existing but empty text file does not count as a complete detail capture."""
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+            item_id = "fedcba9876543210"
+            (output / "catalog.json").write_text(json.dumps({"items": [{
+                "item_id": item_id, "title": "MS705 Lock",
+                "product_url": "https://example.com/MS705",
+            }]}), encoding="utf-8")
+            details = output / "details"
+            details.mkdir()
+            record = {
+                "item_id": item_id, "listing_title": "MS705 Lock",
+                "listing_url": "https://example.com/MS705", "detail_url": "https://example.com/detail",
+                "captured_at": "2026-10-28T00:00:00+00:00",
+                "detail_page": {"title": "MS705 Lock", "body_text_file": f"{item_id}.txt",
+                                "table_rows": [], "definition_rows": [], "json_ld": [],
+                                "json_ld_errors": [], "option_groups": [], "image_urls": []},
+            }
+            (details / f"{item_id}.json").write_text(json.dumps(record), encoding="utf-8")
+            (details / f"{item_id}.txt").write_text("", encoding="utf-8")
+            audit = write_detail_exports(output)
+            self.assertEqual(audit["missing_body_text_item_ids"], [item_id])
+            self.assertFalse(audit["is_complete"])
+
+
 if __name__ == "__main__":
     unittest.main()

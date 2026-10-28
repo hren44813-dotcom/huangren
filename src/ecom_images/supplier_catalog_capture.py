@@ -564,7 +564,7 @@ def build_listing_audit(output: Path) -> dict:
         if expected_pages else []
     )
     duplicate_occurrences = len(all_urls) - len(set(all_urls))
-    complete = bool(expected_pages and not missing_pages and not invalid_files and not page_mismatches)
+    complete = bool(expected_pages and not missing_pages and not invalid_files and not page_mismatches and not empty_pages)
     audit = {
         "checked_at": now_iso(),
         "expected_page_count": expected_pages,
@@ -698,7 +698,10 @@ def write_detail_exports(output: Path) -> dict:
         writer.writerows(attribute_rows)
     missing_ids = sorted(catalog_ids - set(records_by_id))
     orphan_ids = sorted(set(records_by_id) - catalog_ids)
-    text_missing = [row["item_id"] for row in index_rows if not row["text_file"]]
+    text_missing = [
+        row["item_id"] for row in index_rows
+        if not row["text_file"] or not row["body_text_chars"]
+    ]
     audit = {
         "checked_at": now_iso(),
         "expected_product_count": len(items),
@@ -710,8 +713,8 @@ def write_detail_exports(output: Path) -> dict:
         "missing_body_text_item_ids": text_missing,
         "markdown_documents_written": len(index_rows),
         "attribute_rows_written": len(attribute_rows),
-        "is_complete": bool(items) and not missing_ids and not invalid_files and not text_missing,
-        "status": "complete" if items and not missing_ids and not invalid_files and not text_missing else (
+        "is_complete": bool(items) and not missing_ids and not orphan_ids and not invalid_files and not text_missing,
+        "status": "complete" if items and not missing_ids and not orphan_ids and not invalid_files and not text_missing else (
             "partial" if index_rows or items else "not_started"
         ),
         "limitations": [
