@@ -52,6 +52,11 @@ jobs:
           python scripts/verify_supplier_pipeline.py \
             --require-details --expect-status partial \
             --report data/supplier_captures/dgdeler/independent_validation.json
+      - name: Run isolated V13 and supplier-system healthcheck
+        run: |
+          python scripts/system_healthcheck.py \
+            --capture-dir data/supplier_captures/dgdeler \
+            --report data/supplier_captures/dgdeler/system_health_report.json
       - name: Assert first-page-only scope and absent detail coverage
         run: |
           python -c "import json,pathlib; p=pathlib.Path('data/supplier_captures/dgdeler/independent_validation.json'); a=json.loads(p.read_text()); assert a['expected_listing_pages']==139; assert a['captured_listing_pages']==1; assert len(a['missing_listing_pages'])==138; assert a['catalog_products']==16; assert a['valid_detail_products']==0; assert a['status']=='partial'"
@@ -62,6 +67,7 @@ jobs:
           name: supplier-offline-smoke
           path: |
             data/supplier_captures/dgdeler/independent_validation.json
+            data/supplier_captures/dgdeler/system_health_report.json
             data/supplier_captures/dgdeler/exports/
           if-no-files-found: warn
           retention-days: 7
