@@ -14,7 +14,8 @@ python -m playwright install chromium
 ## 第一步：采集商品目录全部分页
 
 ```powershell
-python scripts/supplier_catalog_capture.py listing --max-pages 139 --delay 2.5
+python scripts/seed_supplier_capture.py
+python scripts/supplier_catalog_capture.py listing --max-pages 139 --delay 2.5 --refresh-existing
 ```
 
 每一页都会保存检查点。输出默认在 `data/supplier_captures/dgdeler/`：
@@ -72,8 +73,8 @@ python scripts/import_supplier_capture_v13.py --limit 10
 
 ## 重要限制
 
-- 当前对话里的浏览器读取接口是只读的，不能代替你点击 139 页分页；本工具需要在你本机的可见浏览器中运行。
+- 本机默认使用可见浏览器，以便你手动登录或完成网站要求的验证。自动化模式可使用 --headless --no-prompt，但不能完成交互式验证；检测到限制会停止并保留检查点。
 - 商品页面可能要求登录、验证码或返回动态内容。必须按站点要求手动处理；如果持续被拦截，应停止并使用平台允许的导出/联系供应商获取目录，不要尝试规避。
 - 商品标题中的材料、扭矩、尺寸、寿命等是卖家描述，必须保留来源并标记为待核验；不能自动当成已验证参数。
 - 价格、MOQ、销量和交期是采集时页面显示值，可能变化；销量未显示应保留为空，不代表 0。
-- 采集输出和浏览器 profile 是本地数据，不应提交到公开仓库。
+- 采集输出和浏览器 profile 是本地数据，不应提交到公开仓库。GitHub Actions 的自动采集结果会上传为 30 天 artifact；见 supplier_catalog_database.md。

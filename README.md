@@ -289,6 +289,10 @@ streamlit run app.py
 
 价格、MOQ 和可见销量是采集时页面展示值；标题中的技术描述均标记为未验证。
 
-## 供应商商品目录全量采集（人工验证浏览器）
+## 供应商商品目录采集与 SQLite 历史数据库
 
-如需采集阿里巴巴国际站供应商全部商品分页及商品详情，请按 [采集工具说明](docs/supplier-research/dgdeler_full_catalog_capture.md) 操作。工具会保存每页检查点，提取可见规格表、JSON-LD、图片与 SKU 选项，生成 `catalog.csv`、`details_index.csv`、`detail_attributes.csv` 和完整性审计。详情可通过 `scripts/import_supplier_capture_v13.py` 以 `supplier_document / unverified` 方式进入 V13，不会自动接受技术参数主张。出现登录/验证码时会暂停等待人工处理，不会绕过网站访问控制。采集结果默认保存在被 `.gitignore` 排除的本地 `data/supplier_captures/` 目录，不会提交到公开仓库。
+- 全量采集操作说明：docs/supplier-research/dgdeler_full_catalog_capture.md
+- SQLite 数据库结构、数据质量和运行流程：docs/supplier-research/supplier_catalog_database.md
+- GitHub Actions 全量采集工作流：.github/workflows/supplier-catalog-collection.yml
+
+采集器会保存每页检查点，提取可见规格表、JSON-LD、图片与 SKU 选项；SQLite 会保存商品、每次价格/MOQ/销量观察、详情属性、SKU 选项、采集批次及错误历史。使用 scripts/sync_supplier_catalog_db.py 同步与导出。GitHub Actions 将数据库、CSV、JSON 检查点和审计报告上传为 30 天 artifact，不会把动态数据库二进制直接提交到公开仓库。遇到登录、验证码或访问限制时，自动化会停止并保留已采集进度，不会绕过网站访问控制。供应商页面字段始终标记为待核验观察值，不会自动变成已接受技术参数。
