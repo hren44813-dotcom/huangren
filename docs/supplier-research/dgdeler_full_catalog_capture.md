@@ -69,7 +69,14 @@ python scripts/import_supplier_capture_v13.py
 python scripts/import_supplier_capture_v13.py --limit 10
 ```
 
-导入会将每个商品详情 Markdown 作为 `supplier_document`、`unverified` 来源保存到 V13 文档检索库。它不会自动创建或接受产品参数主张。若要使用非默认数据库，可通过 `--database` 指定路径。
+当前仓库还保存了商品列表第 1 页（16 条可见商品）和供应商主页摘要。若需要把这部分已采集资料先纳入 V13，可执行：
+
+~~~powershell
+python scripts/import_supplier_capture_v13.py --include-reference-snapshots --dry-run
+python scripts/import_supplier_capture_v13.py --include-reference-snapshots
+~~~
+
+导入器会从详情 Markdown 中提取页面上明确写出的详情链接，并把 source_url、页面类型、采集方式和记录 ID 存入 V13 来源元数据；参考快照也会保留原始页面 URL。商品详情 Markdown 作为 supplier_document / unverified 来源导入，主页和列表摘要标记为 other / unverified。它不会自动创建或接受产品参数主张。若要使用非默认数据库，可通过 --database 指定路径。
 
 ## 重要限制
 
