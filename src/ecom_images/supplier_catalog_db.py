@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+from contextlib import contextmanager
 import json
 import re
 import sqlite3
@@ -176,7 +177,7 @@ def open_supplier_db(path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
 
 def initialize_supplier_db(path: str | Path = DEFAULT_DB) -> None:
     """Create or validate the normalized supplier catalog schema without replacing data."""
-    with open_supplier_db(path) as conn:
+    with supplier_connection(path) as conn:
         version = conn.execute("PRAGMA user_version").fetchone()[0]
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if version == SCHEMA_VERSION:
@@ -207,6 +208,22 @@ def initialize_supplier_db(path: str | Path = DEFAULT_DB) -> None:
         except BaseException:
             conn.rollback()
             raise
+
+
+@contextmanager
+def supplier_connection(path: str | Path = DEFAULT_DB):
+    """Close SQLite connections reliably and commit or roll back ordinary transactions."""
+    conn = open_supplier_db(path)
+    try:
+        yield conn
+        if conn.in_transaction:
+            conn.commit()
+    except BaseException:
+        if conn.in_transaction:
+            conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def _first(item: dict, *keys: str, default: Any = None) -> Any:
@@ -451,7 +468,7 @@ def _insert_observation(conn: sqlite3.Connection, product_id: str, run_id: str, 
     delivery = str(_first(item, "delivery_text", default="") or "")
     image_url = str(_first(item, "image_url", default="") or "")
     item_source = str(_first(item, "listing_source_url", "source_url", default=source_url) or source_url)
-    verification = str(_first(item, "verification_status", "sales_status", default="seller_listing_observation_unverified") or "seller_listing_observation_unverified")
+    verification = str(_first(item, "verification_status", default="seller_listing_observation_unverified") or "seller_listing_observation_unverified")
     raw = _json(item)
     hash_payload = {
         "observed_at": observed_at, "title": title, "price_text": price_text,
@@ -584,11 +601,11 @@ def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
         return summary
     initialize_supplier_db(path)
     now = _now()
-    with open_supplier_db(path) as conn:
-        supplier_id = _upsert_supplier(conn, catalog, source_url)
+    with supplier_connection(path) as conn:
         run_id = _id()
         conn.execute("BEGIN IMMEDIATE")
         try:
+            supplier_id = _upsert_supplier(conn, catalog, source_url)
             conn.execute(
                 """INSERT INTO supplier_catalog_runs(id,supplier_id,started_utc,source_url,mode,input_manifest_sha256,args_json)
                    VALUES(?,?,?,?,?,?,?)""",
@@ -669,17 +686,20 @@ def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
         except BaseException as exc:
             if conn.in_transaction:
                 conn.rollback()
-            with conn:
-                conn.execute(
-                    """INSERT INTO supplier_catalog_runs(id,supplier_id,started_utc,source_url,mode,input_manifest_sha256,args_json)
-                       VALUES(?,?,?,?,?,?,?)""",
-                    (run_id, supplier_id, now, source_url, "capture_sync", manifest_sha, _json({"failed": True})),
-                )
-                conn.execute(
-                    """INSERT INTO supplier_catalog_run_events(run_id,created_utc,status,summary_json,note)
-                       VALUES(?,?,?,?,?)""",
-                    (run_id, _now(), "failed", _json({"error_type": type(exc).__name__}), str(exc)[:2000]),
-                )
+            supplier_id = _upsert_supplier(conn, catalog, source_url)
+            conn.commit()
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                """INSERT INTO supplier_catalog_runs(id,supplier_id,started_utc,source_url,mode,input_manifest_sha256,args_json)
+                   VALUES(?,?,?,?,?,?,?)""",
+                (run_id, supplier_id, now, source_url, "capture_sync", manifest_sha, _json({"failed": True})),
+            )
+            conn.execute(
+                """INSERT INTO supplier_catalog_run_events(run_id,created_utc,status,summary_json,note)
+                   VALUES(?,?,?,?,?)""",
+                (run_id, _now(), "failed", _json({"error_type": type(exc).__name__}), str(exc)[:2000]),
+            )
+            conn.commit()
             raise
     summary["database_audit"] = audit_supplier_db(path)
     return summary
@@ -688,7 +708,7 @@ def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
 def audit_supplier_db(path: str | Path = DEFAULT_DB) -> dict:
     """Report SQLite integrity, foreign keys, observation coverage and current run status."""
     initialize_supplier_db(path)
-    with open_supplier_db(path) as conn:
+    with supplier_connection(path) as conn:
         integrity = [row[0] for row in conn.execute("PRAGMA integrity_check")]
         fk_errors = [dict(row) for row in conn.execute("PRAGMA foreign_key_check")]
         counts = {}
@@ -735,7 +755,7 @@ def export_supplier_db(path: str | Path = DEFAULT_DB, output_dir: str | Path = D
     initialize_supplier_db(path)
     out = Path(output_dir).expanduser().absolute()
     out.mkdir(parents=True, exist_ok=True)
-    with open_supplier_db(path) as conn:
+    with supplier_connection(path) as conn:
         queries = {
             "supplier_products.csv": """SELECT p.id AS product_id,s.name AS supplier,p.title,p.product_url,
                 p.model_hints_json,p.category_guess,p.image_url,p.first_seen_utc,p.last_seen_utc,
@@ -791,7 +811,7 @@ def list_supplier_products(path: str | Path = DEFAULT_DB, *, query: str = "", li
         raise ValueError("limit 必须在 1 到 1000 之间")
     initialize_supplier_db(path)
     needle = query.strip()
-    with open_supplier_db(path) as conn:
+    with supplier_connection(path) as conn:
         if needle:
             rows = conn.execute(
                 """SELECT DISTINCT p.id,p.title,p.product_url,p.model_hints_json,p.category_guess
