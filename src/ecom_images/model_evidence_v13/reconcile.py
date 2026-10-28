@@ -1,6 +1,7 @@
 """Read-only V13 source, SKU mapping, claim and parameter-conflict reconciliation."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import unicodedata
@@ -11,6 +12,7 @@ from ..catalog_v12 import _validate_catalog
 from ..database_v9 import DEFAULT_DB
 from ..knowledge_ingest_v13 import validate_ingestion
 from ..knowledge_schema_v13 import open_knowledge_readonly
+from ..knowledge_review_v13 import _checked_source_path
 from .normalize import (
     _ACTIVE_STATES, _contains_exact_model, _object, _value_key,
     _evidence_ready, normalize_model_code,
@@ -20,13 +22,21 @@ _MAX_SOURCE_SCAN = 5000
 
 _MAX_SOURCE_SCAN = 10000
 
-def _read_source_mentions(conn, model_code: str, limit: int) -> tuple[list[dict[str, Any]], int, int, bool]:
+def _verify_source_file(database_path: str | Path, storage_ref: str, expected_sha: str, expected_size: int) -> tuple[bool, str]:
+    try:
+        _checked_source_path(database_path, storage_ref, expected_sha, expected_size)
+        return True, ""
+    except (OSError, ValueError, RuntimeError) as exc:
+        return False, str(exc)
+
+
+def _read_source_mentions(conn, model_code: str, limit: int, database_path: str | Path) -> tuple[list[dict[str, Any]], int, int, bool]:
     code = normalize_model_code(model_code)
     compact_code = re.sub(r"[^A-Z0-9]", "", code)
     if not compact_code:
         sql = """SELECT d.id,d.source_id,d.segment_type,d.pdf_page,d.printed_page,d.sheet_name,
             d.cell_range,d.line_start,d.line_end,d.heading_path,d.text,d.text_sha256,d.region_json,
-            s.original_filename,s.source_kind,s.authority_level,s.sha256,s.storage_ref,s.document_family
+            s.original_filename,s.source_kind,s.authority_level,s.sha256,s.storage_ref,s.document_family,s.size_bytes
             FROM knowledge_document_segments d JOIN knowledge_sources s ON s.id=d.source_id
             WHERE INSTR(UPPER(d.text),UPPER(?))>0 ORDER BY s.created_utc DESC,d.ordinal LIMIT ?"""
         rows = conn.execute(sql, (model_code, _MAX_SOURCE_SCAN + 1)).fetchall()
@@ -57,14 +67,16 @@ def _read_source_mentions(conn, model_code: str, limit: int) -> tuple[list[dict[
             "heading_path": row[9] or None, "excerpt": row[10][:600],
             "text_sha256": row[11], "region": region, "filename": row[13],
             "source_kind": row[14], "authority_level": row[15], "source_sha256": row[16],
-            "storage_ref": row[17], "document_family": row[18],
+            "storage_ref": row[17], "document_family": row[18], "source_size_bytes": row[19],
+            "source_bytes_verified": _verify_source_file(database_path, row[17], row[16], row[19])[0],
+            "source_verification_error": _verify_source_file(database_path, row[17], row[16], row[19])[1],
         })
     return results, len(exact), len(source_ids), truncated
 
 
-def _load_claims(conn, model_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _load_claims(conn, model_id: str, database_path: str | Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     links = conn.execute("""SELECT l.id,l.sku_id,s.code,s.model,p.name,p.category,st.name,
-        e.state,e.actor,e.note,e.source_id,src.original_filename,src.authority_level,src.sha256,
+        e.state,e.actor,e.note,e.source_id,src.original_filename,src.authority_level,src.sha256,src.storage_ref,src.size_bytes,
         (SELECT COUNT(DISTINCT l2.model_id) FROM catalog_sku_model_links l2
          WHERE l2.sku_id=l.sku_id AND
          (SELECT ev2.state FROM catalog_sku_model_events ev2 WHERE ev2.link_id=l2.id
@@ -78,12 +90,17 @@ def _load_claims(conn, model_id: str) -> tuple[list[dict[str, Any]], list[dict[s
           ORDER BY ev.event_id DESC LIMIT 1)
         LEFT JOIN knowledge_sources src ON src.id=e.source_id
         WHERE l.model_id=? ORDER BY l.created_utc,l.id""", (model_id,)).fetchall()
-    mappings = [{
-        "link_id": r[0], "sku_id": r[1], "sku_code": r[2], "sku_model_text": r[3],
-        "product_name": r[4], "category": r[5], "store_name": r[6], "state": r[7] or "unknown",
-        "actor": r[8], "note": r[9], "source_id": r[10], "source_filename": r[11],
-        "source_authority_level": r[12], "source_sha256": r[13], "confirmed_model_count": r[14],
-    } for r in links]
+    mappings = []
+    for r in links:
+        verified, verification_error = _verify_source_file(database_path, r[14] or "", r[13] or "", r[15] or 0)
+        mappings.append({
+            "link_id": r[0], "sku_id": r[1], "sku_code": r[2], "sku_model_text": r[3],
+            "product_name": r[4], "category": r[5], "store_name": r[6], "state": r[7] or "unknown",
+            "actor": r[8], "note": r[9], "source_id": r[10], "source_filename": r[11],
+            "source_authority_level": r[12], "source_sha256": r[13], "source_storage_ref": r[14],
+            "source_size_bytes": r[15], "source_bytes_verified": verified,
+            "source_verification_error": verification_error, "confirmed_model_count": r[16],
+        })
     confirmed_skus = sorted({item["sku_id"] for item in mappings if item["state"] == "confirmed"})
     params: list[Any] = [model_id]
     subject_sql = "c.subject_type='model' AND c.subject_id=?"
@@ -108,16 +125,33 @@ def _load_claims(conn, model_id: str) -> tuple[list[dict[str, Any]], list[dict[s
     placeholders = ",".join("?" for _ in ids)
     evidence_rows = conn.execute(f"""SELECT e.claim_id,e.id,e.source_id,e.evidence_role,e.pdf_page,
         e.printed_page,e.region_json,e.literal_excerpt,e.extraction_method,e.confidence_note,
-        s.original_filename,s.source_kind,s.authority_level,s.sha256,s.storage_ref,s.document_family
+        s.original_filename,s.source_kind,s.authority_level,s.sha256,s.storage_ref,s.document_family,s.size_bytes
         FROM knowledge_claim_evidence e JOIN knowledge_sources s ON s.id=e.source_id
         WHERE e.claim_id IN ({placeholders}) ORDER BY e.created_utc,e.id""", ids).fetchall()
     for r in evidence_rows:
+        region = _object(r[6])
+        source_verified, source_error = _verify_source_file(database_path, r[14], r[13], r[16])
+        segment_verified = None
+        segment_id = region.get("segment_id")
+        if segment_id:
+            segment = conn.execute(
+                "SELECT source_id,text,text_sha256 FROM knowledge_document_segments WHERE id=?",
+                (segment_id,),
+            ).fetchone()
+            segment_verified = bool(
+                segment and segment[0] == r[2]
+                and hashlib.sha256(segment[1].encode("utf-8")).hexdigest() == segment[2]
+                and r[7] == segment[1][:1000]
+                and region.get("source_sha256") == r[13]
+            )
         by_id[r[0]]["evidence"].append({
             "evidence_id": r[1], "source_id": r[2], "role": r[3], "pdf_page": r[4],
-            "printed_page": r[5] or None, "region": _object(r[6]), "literal_excerpt": r[7],
+            "printed_page": r[5] or None, "region": region, "literal_excerpt": r[7],
             "extraction_method": r[8], "confidence_note": r[9], "filename": r[10],
             "source_kind": r[11], "authority_level": r[12], "source_sha256": r[13],
-            "storage_ref": r[14], "document_family": r[15],
+            "storage_ref": r[14], "document_family": r[15], "source_size_bytes": r[16],
+            "source_bytes_verified": source_verified, "source_verification_error": source_error,
+            "segment_hash_verified": segment_verified,
         })
     review_rows = conn.execute(f"""SELECT claim_id,id,verdict,reviewer_role,reviewer_name,
         method,notes,created_utc FROM knowledge_claim_reviews
@@ -188,7 +222,7 @@ def reconcile_model_evidence(
             FROM catalog_models ORDER BY manufacturer_name,model_code LIMIT 5000""").fetchall()
         matches = [r for r in all_models if normalize_model_code(r[2]) == code
                    and (not manufacturer or unicodedata.normalize("NFKC", r[1]).strip().casefold() == manufacturer)]
-        source_mentions, source_mention_count, source_count, truncated = _read_source_mentions(conn, model_code, limit)
+        source_mentions, source_mention_count, source_count, truncated = _read_source_mentions(conn, model_code, limit, path)
         sku_rows = conn.execute("""SELECT s.id,s.code,s.model,s.specs_json,s.active,p.code,p.name,p.category,
             st.code,st.name FROM catalog_skus s JOIN catalog_products p ON p.id=s.product_id
             JOIN catalog_stores st ON st.id=s.store_id ORDER BY st.code,p.code,s.code LIMIT 5000""").fetchall()
@@ -199,7 +233,7 @@ def reconcile_model_evidence(
         } for r in sku_rows if r[2].strip() and normalize_model_code(r[2]) == code]
         model_reports = []
         for row in matches:
-            mappings, claims = _load_claims(conn, row[0])
+            mappings, claims = _load_claims(conn, row[0], path)
             conflicts = _annotate_conflicts(claims)
             confirmed_ids = {m["sku_id"] for m in mappings if m["state"] == "confirmed"}
             for sku in sku_candidates:
