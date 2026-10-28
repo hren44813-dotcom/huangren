@@ -56,9 +56,12 @@ def _read_source_mentions(conn, model_code: str, limit: int, database_path: str 
     exact = [row for row in rows if _contains_exact_model(row[10], model_code)]
     source_ids = {row[1] for row in exact}
     results = []
+    source_verification_cache: dict[str, tuple[bool, str]] = {}
     for row in exact[:limit]:
         region = _object(row[12])
-        source_verified, source_error = _verify_source_file(database_path, row[17], row[16], row[19])
+        if row[1] not in source_verification_cache:
+            source_verification_cache[row[1]] = _verify_source_file(database_path, row[17], row[16], row[19])
+        source_verified, source_error = source_verification_cache[row[1]]
         results.append({
             "segment_id": row[0], "source_id": row[1], "segment_type": row[2],
             "pdf_page": row[3], "printed_page": row[4] or None, "sheet_name": row[5] or None,
@@ -74,6 +77,14 @@ def _read_source_mentions(conn, model_code: str, limit: int, database_path: str 
 
 
 def _load_claims(conn, model_id: str, database_path: str | Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    verification_cache: dict[tuple[str, str, int], tuple[bool, str]] = {}
+
+    def verify_source(storage_ref: str, expected_sha: str, expected_size: int) -> tuple[bool, str]:
+        key = (storage_ref, expected_sha, expected_size)
+        if key not in verification_cache:
+            verification_cache[key] = _verify_source_file(database_path, storage_ref, expected_sha, expected_size)
+        return verification_cache[key]
+
     links = conn.execute("""SELECT l.id,l.sku_id,s.code,s.model,p.name,p.category,st.name,
         e.state,e.actor,e.note,e.source_id,src.original_filename,src.authority_level,src.sha256,src.storage_ref,src.size_bytes,
         (SELECT COUNT(DISTINCT l2.model_id) FROM catalog_sku_model_links l2
@@ -91,7 +102,7 @@ def _load_claims(conn, model_id: str, database_path: str | Path) -> tuple[list[d
         WHERE l.model_id=? ORDER BY l.created_utc,l.id""", (model_id,)).fetchall()
     mappings = []
     for r in links:
-        verified, verification_error = _verify_source_file(database_path, r[14] or "", r[13] or "", r[15] or 0)
+        verified, verification_error = verify_source(r[14] or "", r[13] or "", r[15] or 0)
         mappings.append({
             "link_id": r[0], "sku_id": r[1], "sku_code": r[2], "sku_model_text": r[3],
             "product_name": r[4], "category": r[5], "store_name": r[6], "state": r[7] or "unknown",
@@ -129,7 +140,7 @@ def _load_claims(conn, model_id: str, database_path: str | Path) -> tuple[list[d
         WHERE e.claim_id IN ({placeholders}) ORDER BY e.created_utc,e.id""", ids).fetchall()
     for r in evidence_rows:
         region = _object(r[6])
-        source_verified, source_error = _verify_source_file(database_path, r[14], r[13], r[16])
+        source_verified, source_error = verify_source(r[14], r[13], r[16])
         segment_verified = None
         segment_id = region.get("segment_id")
         if segment_id:
