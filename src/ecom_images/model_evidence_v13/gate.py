@@ -48,6 +48,8 @@ def evaluate_content_gate(
             reasons.append("SKU 与制造商型号没有经过来源证据确认的显式映射")
         elif any(m["confirmed_model_count"] != 1 for m in matching):
             reasons.append("该 SKU 被确认映射到多个制造商型号，身份冲突未解决")
+        elif not matching[0]["source_bytes_verified"]:
+            reasons.append("SKU/型号映射来源原始文件缺失或 SHA-256/文件大小与登记值不一致")
         elif matching[0]["source_authority_level"] not in _TRUSTED_MAPPING_AUTHORITIES:
             reasons.append("SKU/型号映射来源仍未验证或权威级别不足")
     for attribute_key in attributes:
