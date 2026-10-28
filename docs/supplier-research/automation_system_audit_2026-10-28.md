@@ -2,7 +2,7 @@
 
 ## 已检查的系统
 
-- 电商主图与 SKU 排版：原有图像处理测试继续由 Python 3.10/3.12 CI 执行，不允许凭空生成商品规格。
+- 电商主图与 SKU 排版：Python 3.10/3.12 单元测试之外，CI 会运行五类演示图片的真实 CLI 生成流程并校验文件存在与像素尺寸。演示图不是可上架商品，不允许凭空生成商品规格。
 - V9/V12/V13：通过全新临时数据库的初始化、SQLite integrity 与 foreign_key_check 检查验证 schema 兼容性。不会改动生产数据库。
 - 供应商采集：用已提交的首屏商品资料作测试基线，真实站点抓取与离线检查解耦。
 - 商品数据库：规范化商品、价格/MOQ/销量历史、可见 SKU 选项、错误日志和来源追溯。
@@ -24,7 +24,7 @@
 - scripts/run_full_supplier_capture.ps1：Windows 可见浏览器采集 -> SQLite -> V13
 - scripts/sync_supplier_catalog_db.py：规范化数据库同步、审计和导出
 - scripts/import_supplier_capture_v13.py：资料索引与未验证来源导入
-- .github/workflows/ci.yml：单元测试、离线集成和 PowerShell 语法
+- .github/workflows/ci.yml：单元测试、五类电商图片 CLI 生成、离线数据库集成和 Windows PowerShell 语法
 - .github/workflows/weekly-offline-health.yml：定期离线自动体检
 - .github/workflows/supplier-catalog-collection.yml：手动触发网页采集并保存数据工件
 

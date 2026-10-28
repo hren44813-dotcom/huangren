@@ -93,3 +93,54 @@ jobs:
             exit 1
           }
           Write-Host "PowerShell syntax valid"
+
+
+  image-pipeline-smoke:
+    name: Generate and verify all five demo image modes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install image dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Generate demo fixture (not sellable product)
+        run: python scripts/create_demo_asset.py
+      - name: Build main, white, portrait, SKU and detail images
+        run: python scripts/build_images.py --config configs/example.json --report output/report.json
+      - name: Verify mode dimensions and produced files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image
+          expected = {
+              'search_white': (1440, 1440), 'main': (1440, 1440),
+              'portrait': (1440, 1920), 'sku': (1440, 1440), 'detail': (800, 1600),
+          }
+          data = json.loads(Path('output/report.json').read_text(encoding='utf-8'))
+          assert len(data) == len(expected), (len(data), len(expected))
+          for record in data:
+              mode = record['mode']
+              assert mode in expected, mode
+              file = Path(record['file'])
+              assert file.is_file(), file
+              with Image.open(file) as picture:
+                  assert picture.size == expected[mode], (mode, picture.size)
+              assert record['width'] == expected[mode][0]
+              assert record['height'] == expected[mode][1]
+          print('All five demo image outputs verified')
+          PY
+      - name: Upload inspectable demo images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecommerce-demo-image-smoke
+          path: |
+            output/report.json
+            output/demo_*.jpg
+          if-no-files-found: warn
+          retention-days: 7
