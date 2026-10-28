@@ -78,6 +78,23 @@ python scripts/import_supplier_capture_v13.py --include-reference-snapshots
 
 导入器会从详情 Markdown 中提取页面上明确写出的详情链接，并把 source_url、页面类型、采集方式和记录 ID 存入 V13 来源元数据；参考快照也会保留原始页面 URL。商品详情 Markdown 作为 supplier_document / unverified 来源导入，主页和列表摘要标记为 other / unverified。它不会自动创建或接受产品参数主张。若要使用非默认数据库，可通过 --database 指定路径。
 
+### 将当前已保存的第 1 页商品卡片先导入 V13
+
+当前可用的快照只记录了商品列表第 1 页的 16 个卡片，页面显示分页为 1/139。可先把这些卡片分别写成带来源链接的未验证证据文档，供 V13 按型号和关键词检索：
+
+~~~powershell
+python scripts/import_dgdeler_listing_v13.py --dry-run
+python scripts/import_dgdeler_listing_v13.py
+~~~
+
+若要指定现有 V13 数据库：
+
+~~~powershell
+python scripts/import_dgdeler_listing_v13.py --database ".local/huangren.sqlite3"
+~~~
+
+该导入器为每个商品保留列表原文、商品详情 URL、列表来源 URL、采集日期、显示价格和列表明确显示的 MOQ；SKU/变体、材质、尺寸、扭矩和详情页 MOQ 等字段会明确标注为“未在当前商品列表快照中显示”，不会误写成商品没有这些属性。来源等级固定为 unverified，不会自动创建参数主张或 SKU 映射。该步骤只导入当前 16 个卡片，不替代后续 139 页和商品详情采集。
+
 ## 重要限制
 
 - 本机默认使用可见浏览器，以便你手动登录或完成网站要求的验证。自动化模式可使用 --headless --no-prompt，但不能完成交互式验证；检测到限制会停止并保留检查点。
