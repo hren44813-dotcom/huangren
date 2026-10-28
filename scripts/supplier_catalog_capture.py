@@ -137,6 +137,9 @@ def run_details(args: argparse.Namespace) -> int:
                     page.goto(item["product_url"], wait_until="domcontentloaded", timeout=90000)
                     page.wait_for_timeout(1200)
                     wait_for_manual_check(page, f"商品详情 {item.get('title', item_id)}", interactive=interactive)
+                    # Validate the final destination, not only the requested URL.
+                    # Login, storefront and unrelated redirect pages are not product evidence.
+                    validate_alibaba_url(page.url, require_product=True)
                     detail = page.evaluate(DETAIL_JS)
                     body_text = detail.pop("body_text", "")
                     detail["body_text_file"] = f"{item_id}.txt"

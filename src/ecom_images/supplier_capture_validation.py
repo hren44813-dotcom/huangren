@@ -182,6 +182,13 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
             listing_url = normalize_url(str(record.get("listing_url") or ""))
             if listing_url != catalog_ids[item_id]:
                 raise ValueError("详情来源 URL 与目录商品不匹配")
+            # The requested listing URL is not proof of the actual loaded page:
+            # a redirect to an Alibaba login wall can contain nonempty body text.
+            actual_url = record.get("detail_url")
+            if actual_url is not None:
+                if not isinstance(actual_url, str):
+                    raise ValueError("详情最终 URL 不是文本")
+                validate_alibaba_url(actual_url, require_product=True)
             valid_detail_ids.add(item_id)
         except (ValueError, OSError, json.JSONDecodeError) as exc:
             invalid_details.append({"file": path.name, "error": str(exc)})

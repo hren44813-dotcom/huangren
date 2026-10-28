@@ -14,16 +14,21 @@ _SPEC_VALUE = re.compile(r"^specs\[(\d+)\]\.value$")
 _SIMPLE_FIELDS = {"title", "subtitle", "label"}
 
 
-def _norm_text(value: str) -> str:
+def _norm_text(value: str, *, preserve_case: bool = False) -> str:
     text = unicodedata.normalize("NFKC", value).replace("·", ".").replace("⋅", ".")
     text = text.replace("–", "-").replace("—", "-").replace("−", "-")
     text = re.sub(r"\s*([./_\-])\s*", r"\1", text)
-    return re.sub(r"\s+", " ", text).strip().casefold()
+    normalized = re.sub(r"\s+", " ", text).strip()
+    return normalized if preserve_case else normalized.casefold()
 
 
 def _contains_value(field_text: str, value: str, unit: str) -> bool:
-    haystack = _norm_text(field_text)
-    needle = _norm_text(value)
+    # SI prefixes are case-sensitive: MN.m and mN.m have different magnitudes.
+    # Preserve case throughout paired value/unit matching; ordinary text fields
+    # without units continue to use the previous case-insensitive behavior.
+    has_unit = bool(unit.strip())
+    haystack = _norm_text(field_text, preserve_case=has_unit)
+    needle = _norm_text(value, preserve_case=has_unit)
     if not needle:
         return False
     numeric = False
@@ -41,7 +46,7 @@ def _contains_value(field_text: str, value: str, unit: str) -> bool:
         token = re.escape(needle)
     left = r"(?<![a-z0-9_.\-])"
     right = r"(?![a-z0-9_.\-])"
-    unit_key = re.sub(r"\s+", "", _norm_text(unit))
+    unit_key = re.sub(r"\s+", "", _norm_text(unit, preserve_case=True))
     if not unit_key:
         return re.search(left + token + right, haystack) is not None
     # A reviewed value and unit must occur together, not as unrelated substrings:

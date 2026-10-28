@@ -46,7 +46,8 @@ def _object(value: Any) -> dict[str, Any]:
 
 
 def _unit_key(value: str) -> str:
-    text = unicodedata.normalize("NFKC", value or "").casefold()
+    text = unicodedata.normalize("NFKC", value or "")
+    # SI prefixes are case-sensitive (MN versus mN); never case-fold units.
     text = text.replace("·", ".").replace("⋅", ".")
     return re.sub(r"\s+", "", text)
 

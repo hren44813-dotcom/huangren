@@ -36,7 +36,7 @@ def build_listing_audit(output: Path) -> dict:
     for record in page_records:
         file_number = record.get("_file_page_number")
         page_number = record.get("page_number")
-        if isinstance(file_number, int) and isinstance(page_number, int) and file_number != page_number:
+        if not isinstance(file_number, int) or not isinstance(page_number, int) or file_number != page_number:
             page_mismatches.append({"file_page": file_number, "record_page": page_number})
         pagination = str(record.get("pagination_text") or "")
         match = re.search(r"(\d+)\s*/\s*(\d+)", pagination)
@@ -53,17 +53,23 @@ def build_listing_audit(output: Path) -> dict:
         for item in items if isinstance(items, list) else []:
             if isinstance(item, dict) and item.get("product_url"):
                 all_urls.append(item["product_url"])
-    expected_pages = max(totals) if totals else (max(captured_numbers) if captured_numbers else None)
+    # Never infer the catalog's total page count from existing checkpoints.
+    # A saved page 1 alone is not evidence that the supplier has only one page.
+    pagination_total_known = bool(page_records) and len(totals) == len(page_records) and len(set(totals)) == 1
+    expected_pages = totals[0] if pagination_total_known else None
     captured_set = set(captured_numbers)
     missing_pages = (
         [number for number in range(1, expected_pages + 1) if number not in captured_set]
         if expected_pages else []
     )
     duplicate_occurrences = len(all_urls) - len(set(all_urls))
-    complete = bool(expected_pages and not missing_pages and not invalid_files and not page_mismatches and not empty_pages)
+    complete = bool(pagination_total_known and expected_pages and not missing_pages
+                    and not invalid_files and not page_mismatches and not empty_pages)
     audit = {
         "checked_at": now_iso(),
         "expected_page_count": expected_pages,
+        "pagination_total_known": pagination_total_known,
+        "pagination_total_conflicting": len(set(totals)) > 1,
         "captured_page_count": len(captured_numbers),
         "captured_page_numbers": captured_numbers,
         "missing_page_numbers": missing_pages,

@@ -59,12 +59,14 @@ def _upsert_product(conn: sqlite3.Connection, supplier_id: str, item: dict, obse
     conn.execute(
         """INSERT INTO supplier_catalog_products(id,supplier_id,product_url,title,model_hints_json,category_guess,
            image_url,image_label,first_seen_utc,last_seen_utc) VALUES(?,?,?,?,?,?,?,?,?,?)
-           ON CONFLICT(product_url) DO UPDATE SET title=CASE WHEN excluded.title<>'' THEN excluded.title ELSE title END,
-           model_hints_json=CASE WHEN excluded.model_hints_json<>'[]' THEN excluded.model_hints_json ELSE model_hints_json END,
-           category_guess=CASE WHEN excluded.category_guess<>'' THEN excluded.category_guess ELSE category_guess END,
-           image_url=CASE WHEN excluded.image_url<>'' THEN excluded.image_url ELSE image_url END,
-           image_label=CASE WHEN excluded.image_label<>'' THEN excluded.image_label ELSE image_label END,
-           last_seen_utc=excluded.last_seen_utc""",
+           ON CONFLICT(product_url) DO UPDATE SET
+           title=CASE WHEN excluded.last_seen_utc>=last_seen_utc AND excluded.title<>'' THEN excluded.title ELSE title END,
+           model_hints_json=CASE WHEN excluded.last_seen_utc>=last_seen_utc AND excluded.model_hints_json<>'[]' THEN excluded.model_hints_json ELSE model_hints_json END,
+           category_guess=CASE WHEN excluded.last_seen_utc>=last_seen_utc AND excluded.category_guess<>'' THEN excluded.category_guess ELSE category_guess END,
+           image_url=CASE WHEN excluded.last_seen_utc>=last_seen_utc AND excluded.image_url<>'' THEN excluded.image_url ELSE image_url END,
+           image_label=CASE WHEN excluded.last_seen_utc>=last_seen_utc AND excluded.image_label<>'' THEN excluded.image_label ELSE image_label END,
+           first_seen_utc=CASE WHEN excluded.first_seen_utc<first_seen_utc THEN excluded.first_seen_utc ELSE first_seen_utc END,
+           last_seen_utc=CASE WHEN excluded.last_seen_utc>last_seen_utc THEN excluded.last_seen_utc ELSE last_seen_utc END""",
         (product_id, supplier_id, url, title, _json(models), category, image_url, image_label, observed_at, observed_at),
     )
     row = conn.execute("SELECT id FROM supplier_catalog_products WHERE product_url=?", (url,)).fetchone()

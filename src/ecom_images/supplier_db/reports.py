@@ -60,19 +60,19 @@ def export_supplier_db(path: str | Path = DEFAULT_DB, output_dir: str | Path = D
             "supplier_products.csv": """SELECT p.id AS product_id,s.name AS supplier,p.title,p.product_url,
                 p.model_hints_json,p.category_guess,p.image_url,p.first_seen_utc,p.last_seen_utc,
                 (SELECT o.price_text FROM supplier_catalog_observations o WHERE o.product_id=p.id
-                 ORDER BY o.rowid DESC LIMIT 1) AS latest_price_text,
+                 ORDER BY o.observed_at DESC, o.rowid DESC LIMIT 1) AS latest_price_text,
                 (SELECT o.price_min FROM supplier_catalog_observations o WHERE o.product_id=p.id
-                 ORDER BY o.rowid DESC LIMIT 1) AS latest_price_min,
+                 ORDER BY o.observed_at DESC, o.rowid DESC LIMIT 1) AS latest_price_min,
                 (SELECT o.price_max FROM supplier_catalog_observations o WHERE o.product_id=p.id
-                 ORDER BY o.rowid DESC LIMIT 1) AS latest_price_max,
+                 ORDER BY o.observed_at DESC, o.rowid DESC LIMIT 1) AS latest_price_max,
                 (SELECT o.price_currency FROM supplier_catalog_observations o WHERE o.product_id=p.id
-                 ORDER BY o.rowid DESC LIMIT 1) AS latest_currency,
+                 ORDER BY o.observed_at DESC, o.rowid DESC LIMIT 1) AS latest_currency,
                 (SELECT o.moq_quantity FROM supplier_catalog_observations o WHERE o.product_id=p.id
-                 ORDER BY o.rowid DESC LIMIT 1) AS latest_moq,
+                 ORDER BY o.observed_at DESC, o.rowid DESC LIMIT 1) AS latest_moq,
                 (SELECT o.sales_count_displayed FROM supplier_catalog_observations o WHERE o.product_id=p.id
-                 ORDER BY o.rowid DESC LIMIT 1) AS latest_sales_displayed,
+                 ORDER BY o.observed_at DESC, o.rowid DESC LIMIT 1) AS latest_sales_displayed,
                 (SELECT o.sales_status FROM supplier_catalog_observations o WHERE o.product_id=p.id
-                 ORDER BY o.rowid DESC LIMIT 1) AS latest_sales_status
+                 ORDER BY o.observed_at DESC, o.rowid DESC LIMIT 1) AS latest_sales_status
                 FROM supplier_catalog_products p JOIN supplier_catalog_suppliers s ON s.id=p.supplier_id
                 ORDER BY p.title""",
             "supplier_price_history.csv": """SELECT p.title,p.product_url,o.observed_at,o.page_number,o.price_text,
