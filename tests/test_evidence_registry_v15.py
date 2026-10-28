@@ -8,6 +8,11 @@ class Tests(unittest.TestCase):
   cls.h=json.loads((ROOT/"assets/history/history_reference_v13.json").read_text(encoding="utf-8"));cls.s=json.loads((ROOT/"assets/history/evidence_seed_v15.json").read_text(encoding="utf-8"))
  def test_counts(self):
   r=audit(self.h,self.s);self.assertEqual(r["history_records"],74);self.assertEqual(r["claims_count"],87);self.assertEqual(r["records_with_exact_model_listed"],35);self.assertEqual(r["records_with_any_source_anchor"],42);self.assertEqual(r["independent_engineering_verifications"],0)
+ def test_source_hash_metadata(self):
+  s=self.s["sources"][0]
+  self.assertEqual(s["sha256"],"13b025c578ae6d0f164843545d8d6539ed5c36861b5b2b061832ea69f2d360b2")
+  self.assertEqual(s["size_bytes"],173132513)
+  self.assertEqual(s["pdf_pages"],195)
  def test_exact_boundaries(self):
   self.assertFalse(contains_exact_model("GL1-103-50","103"));self.assertFalse(contains_exact_model("MS705-Z","MS705"));self.assertFalse(contains_exact_model("HC-XAH18","XAH18"));self.assertTrue(contains_exact_model("MS705-Z","MS705-Z"))
  def test_wrong_exact_value_rejected(self):

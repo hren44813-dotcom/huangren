@@ -4,7 +4,7 @@
   "unit_tests": {
     "passed": 15,
     "failed": 0,
-    "runner": "python unittest discover"
+    "scope": "V15-specific tests in tests/test_evidence_registry_v15.py"
   },
   "sqlite_smoke_test": {
     "initialized": true,
@@ -32,5 +32,15 @@
     "Automated checks validate registry consistency, not the physical truth of product specifications.",
     "Source PDF is not included in the package or public repository.",
     "Browser interaction was not tested in a real graphical browser; only JavaScript syntax was checked."
-  ]
+  ],
+  "github_actions": {
+    "run_id": 40612984606,
+    "url": "https://github.com/hren44813-dotcom/huangren/actions/runs/40612984606",
+    "python_versions": [
+      "3.10",
+      "3.12"
+    ],
+    "conclusion": "success",
+    "note": "This run passed before the added source metadata assertion; a new run will be triggered by this commit."
+  }
 }
