@@ -1,7 +1,6 @@
 """Chinese Streamlit workspace for source-grounded V13 parameter review."""
 from __future__ import annotations
 
-import json
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -108,7 +107,7 @@ def _render_document_import(st) -> None:
                 type=["pdf", "docx", "md", "markdown", "txt", "xlsx", "xlsm", "xls"],
                 key="review_import_file",
             )
-            kind_label = st.selectbox("资料类型", list(_SOURCE_KINDS.values()), key="review_import_kind")
+            kind_label = st.selectbox("资料类型", [value for key, value in _SOURCE_KINDS.items() if key != "physical_photo"], key="review_import_kind")
             authority_label = st.selectbox(
                 "来源等级", list(_AUTHORITY.values()), index=1, key="review_import_authority"
             )
@@ -293,7 +292,9 @@ def _render_claim_review(st, claim: dict[str, Any]) -> None:
         notes = st.text_area("复核说明", max_chars=1000, key=f"review_notes_{claim_id}")
         decision_options = ["仅记录复核"]
         if state in {"proposed", "reopened"}:
-            decision_options.extend(["接受主张", "拒绝主张"])
+            if verdict_label != "反对":
+                decision_options.append("接受主张")
+            decision_options.append("拒绝主张")
         elif state == "accepted":
             decision_options.append("拒绝主张")
             if verdict_label != "反对":
