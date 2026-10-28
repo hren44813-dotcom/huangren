@@ -279,3 +279,12 @@ streamlit run app.py
 - [结构化交叉核验 JSON](docs/supplier-research/dgdeler_cross_source_verification_2026-10-28.json)
 
 导入 V13 时建议将网页摘要标记为 other / unverified；产品级参数需回到具体产品页面、厂家规格书或检测报告核验。
+### DGDeler 商品列表快照
+
+已从阿里巴巴国际站商品列表第 1 页保存 16 条可见商品记录（仅当前页；页面显示分页 1/139，不推断全店商品总数）：
+
+- [商品列表 Markdown](docs/supplier-research/dgdeler_product_list_page1_2026-10-28.md)
+- [结构化 JSON](docs/supplier-research/dgdeler_product_list_page1_2026-10-28.json)
+- [运营助理 CSV](docs/supplier-research/dgdeler_product_list_page1_2026-10-28.csv)
+
+价格、MOQ 和可见销量是采集时页面展示值；标题中的技术描述均标记为未验证。
