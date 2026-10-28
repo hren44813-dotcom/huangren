@@ -36,16 +36,17 @@ def _contains_value(field_text: str, value: str, unit: str) -> bool:
         rendered = format(target.normalize(), "f")
         if "." in rendered:
             rendered = rendered.rstrip("0").rstrip(".")
-        numeric_pattern = re.escape(rendered) + r"(?:\.0+)?"
-        value_found = re.search(r"(?<![\d.])" + numeric_pattern + r"(?![\d.])", haystack) is not None
+        token = re.escape(rendered) + r"(?:\.0+)?"
     else:
-        pattern = r"(?<![a-z0-9_.\-])" + re.escape(needle) + r"(?![a-z0-9_.\-])"
-        value_found = re.search(pattern, haystack) is not None
-    if not value_found:
-        return False
+        token = re.escape(needle)
+    left = r"(?<![a-z0-9_.\-])"
+    right = r"(?![a-z0-9_.\-])"
     unit_key = re.sub(r"\s+", "", _norm_text(unit))
-    compact_haystack = re.sub(r"\s+", "", haystack)
-    return not unit_key or unit_key in compact_haystack
+    if not unit_key:
+        return re.search(left + token + right, haystack) is not None
+    # A reviewed value and unit must occur together, not as unrelated substrings:
+    # "6 kN.m" and "6 pcs, 8 N.m" must never satisfy "6 N.m".
+    return re.search(left + token + r"\s*" + re.escape(unit_key) + right, haystack) is not None
 
 
 def _field_text(job: dict[str, Any], field: str) -> str:

@@ -104,12 +104,16 @@ def _extract_attribute_pairs(detail_page: dict) -> list[dict]:
         if not isinstance(cells, list):
             continue
         cells = [_clean_text(cell) for cell in cells]
-        cells = [cell for cell in cells if cell]
+        # Keep empty table cells; dropping them silently shifts key/value pairs.
         if len(cells) < 2:
             continue
-        candidates = list(zip(cells[0::2], cells[1::2])) if len(cells) >= 4 and len(cells) % 2 == 0 else [
-            (cells[0], " | ".join(cells[1:]))
-        ]
+        if len(cells) >= 4 and len(cells) % 2 == 0:
+            candidates = list(zip(cells[0::2], cells[1::2]))
+        elif all(cells):
+            candidates = [(cells[0], " | ".join(cells[1:]))]
+        else:
+            # Ambiguous incomplete rows must not shift columns to invent values.
+            candidates = list(zip(cells[0::2], cells[1::2]))
         for key, value in candidates:
             if key and value:
                 pairs.append({"key": key, "value": value, "source_locator": f"table_row_{row_no}"})

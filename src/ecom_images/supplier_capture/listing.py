@@ -23,8 +23,8 @@ MOQ_RE = re.compile(
 SOLD_RE = re.compile(r"\b([0-9][0-9,]*)\s+sold\b", re.IGNORECASE)
 DELIVERY_RE = re.compile(r"\bDelivery\s+by\s+([^\n\r]+)", re.IGNORECASE)
 MODEL_RE = re.compile(
-    r"\b(?:MS|CL|GL\d?|HC|XAH|XAG|XAE|XAC|LS|CK|HFX|TX)"
-    r"\s*-?\s*[A-Z0-9]+(?:-[A-Z0-9]+)*\b",
+    r"(?<![A-Za-z0-9])(?:MS|CL|GL\d?|HC|XAH|XAG|XAE|XAC|LS|CK|HFX|TX)"
+    r"\s*-?\s*(?=[A-Z-]*\d)[A-Z0-9]+(?:-[A-Z0-9]+)*(?![A-Za-z0-9-])",
     re.IGNORECASE,
 )
 from .browser_js import LISTING_JS, META_JS

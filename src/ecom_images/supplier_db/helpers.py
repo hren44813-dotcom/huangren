@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 from ..supplier_catalog_capture import normalize_url
+from ..supplier_capture.listing import MODEL_RE
 from .schema import _json, _sha, SUPPLIER_NAME, SUPPLIER_URL
 
 def _first(item: dict, *keys: str, default: Any = None) -> Any:
@@ -44,12 +45,14 @@ def _models(item: dict) -> list[str]:
     found = []
     for value in raw:
         model = re.sub(r"\s+", "", str(value)).strip().upper()
-        if model and model not in found:
+        if model and MODEL_RE.fullmatch(model) and model not in found:
             found.append(model)
     if not found:
         title = str(_first(item, "title", "product_title", "listing_title", default=""))
-        pattern = re.compile(r"\b(?:MS|CL|GL\d?|HC|XAH|XAG|XAE|XAC|LS|CK|HFX|TX)\s*-?\s*[A-Z0-9]+(?:-[A-Z0-9]+)*\b", re.I)
-        found = list(dict.fromkeys(re.sub(r"\s+", "", match.group(0)).upper() for match in pattern.finditer(title)))
+        found = list(dict.fromkeys(
+            re.sub(r"\s+", "", match.group(0)).upper()
+            for match in MODEL_RE.finditer(title)
+        ))
     return found
 
 

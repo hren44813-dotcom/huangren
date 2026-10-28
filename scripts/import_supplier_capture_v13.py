@@ -117,9 +117,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.limit < 0:
             raise ValueError("--limit 不能小于 0")
         capture_dir = args.capture_dir.resolve()
-        if not capture_dir.is_dir():
+        if capture_dir.exists() and not capture_dir.is_dir():
+            raise NotADirectoryError(f"详情 Markdown 路径不是目录：{capture_dir}")
+        if not capture_dir.is_dir() and not args.include_reference_snapshots:
             raise FileNotFoundError(f"详情 Markdown 目录不存在：{capture_dir}")
-        files = sorted(capture_dir.glob("*.md"))
+        files = sorted(capture_dir.glob("*.md")) if capture_dir.is_dir() else []
         if args.include_reference_snapshots:
             files.extend(path for path in REFERENCE_SNAPSHOTS if path.is_file())
         if args.limit:
