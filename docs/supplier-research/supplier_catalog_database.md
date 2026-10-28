@@ -39,7 +39,7 @@ For a full visible-browser run on Windows, run the PowerShell orchestrator below
 .\scripts\run_full_supplier_capture.ps1 -InstallDependencies
 ```
 
-The switch installs dependencies and immediately starts collection. If dependencies are already installed, omit it; after an interruption, rerun without the switch to resume. The lower-level commands are also available; refresh existing checkpoints when the goal is to capture new price observations:
+Alternatively, run the lower-level commands below for manual control; refresh existing checkpoints when the goal is to capture new price observations:
 
 ```powershell
 python scripts/supplier_catalog_capture.py listing --max-pages 139 --delay 2.5 --refresh-existing
