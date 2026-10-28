@@ -104,7 +104,7 @@ def _is_captcha(html: str) -> bool:
     return any(marker in sample for marker in CAPTCHA_MARKERS)
 
 
-def crawl(start_url: str, *, max_pages: int = DEFAULT_MAX_PAGES, delay: float = 1.0,
+def crawl(start_url: str, *, seed_urls: list[str] | None = None, max_pages: int = DEFAULT_MAX_PAGES, delay: float = 1.0,
           timeout: float = 20.0, database: Path = DEFAULT_DB, output_dir: Path = Path("artifacts/alibaba-shop-v13"),
           fetcher=_fetch) -> dict:
     """Crawl same-shop category/list/product links and import each accessible HTML snapshot."""
@@ -119,8 +119,15 @@ def crawl(start_url: str, *, max_pages: int = DEFAULT_MAX_PAGES, delay: float = 
     snapshots = output_dir / "html"
     snapshots.mkdir(parents=True, exist_ok=True)
     initialize_ingestion(database)
-    queue = deque([seed])
-    queued = {seed}
+    seeds = [seed]
+    for candidate in seed_urls or []:
+        normalized = canonical_url(candidate)
+        if not normalized:
+            raise ValueError(f"种子链接必须属于 {SHOP_HOST}：{candidate}")
+        if normalized not in seeds:
+            seeds.append(normalized)
+    queue = deque(seeds)
+    queued = set(seeds)
     visited = set()
     pages = []
     errors = []
@@ -147,8 +154,10 @@ def crawl(start_url: str, *, max_pages: int = DEFAULT_MAX_PAGES, delay: float = 
                 pages.append(row)
                 errors.append({"url": url, "reason": row["note"]})
                 blocked = True
-                # Reaching a gate means deeper paths are not reliably accessible in this session.
-                break
+                # Continue other known seeds so the report distinguishes accessible and blocked sections.
+                if delay:
+                    time.sleep(delay)
+                continue
             parsed = parse_html_document(html, base_url=final)
             text = "\n".join(parsed["lines"])
             row["url"] = final
@@ -228,6 +237,7 @@ def crawl(start_url: str, *, max_pages: int = DEFAULT_MAX_PAGES, delay: float = 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="遍历 Alibaba 店铺分类/商品页，并把原始 HTML 导入 V13")
     parser.add_argument("--start-url", default=DEFAULT_START)
+    parser.add_argument("--seed-url", action="append", default=[], help="额外店铺分类/商品列表入口，可重复指定")
     parser.add_argument("--database", type=Path, default=DEFAULT_DB)
     parser.add_argument("--output-dir", type=Path, default=Path("artifacts/alibaba-shop-v13"))
     parser.add_argument("--max-pages", type=int, default=DEFAULT_MAX_PAGES)
@@ -235,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=20.0)
     args = parser.parse_args(argv)
     try:
-        report = crawl(args.start_url, max_pages=args.max_pages, delay=args.delay, timeout=args.timeout,
+        report = crawl(args.start_url, seed_urls=args.seed_url, max_pages=args.max_pages, delay=args.delay, timeout=args.timeout,
                        database=args.database, output_dir=args.output_dir)
         print(json.dumps({k: v for k, v in report.items() if k not in {"pages", "errors"}},
                          ensure_ascii=False, indent=2))
