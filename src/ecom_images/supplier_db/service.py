@@ -6,7 +6,7 @@ from pathlib import Path
 from ..supplier_capture_validation import inspect_supplier_capture
 from ..supplier_catalog_capture import normalize_url
 from .schema import DEFAULT_DB, DEFAULT_CAPTURE_DIR, DEFAULT_SNAPSHOT, SUPPLIER_URL, initialize_supplier_db, supplier_connection, _now, _id, _json
-from .helpers import _load_inputs, _item_url, _first, _manifest
+from .helpers import _load_inputs, _item_url, _first, _as_int, _manifest
 from .writes import _upsert_supplier, _record_error, _insert_page, _upsert_product, _insert_observation, _insert_detail
 from .reports import audit_supplier_db
 
