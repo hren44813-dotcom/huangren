@@ -20,8 +20,6 @@ from .normalize import (
 
 _MAX_SOURCE_SCAN = 5000
 
-_MAX_SOURCE_SCAN = 10000
-
 def _verify_source_file(database_path: str | Path, storage_ref: str, expected_sha: str, expected_size: int) -> tuple[bool, str]:
     try:
         _checked_source_path(database_path, storage_ref, expected_sha, expected_size)
@@ -48,7 +46,7 @@ def _read_source_mentions(conn, model_code: str, limit: int, database_path: str 
         )
         sql = f"""SELECT d.id,d.source_id,d.segment_type,d.pdf_page,d.printed_page,d.sheet_name,
             d.cell_range,d.line_start,d.line_end,d.heading_path,d.text,d.text_sha256,d.region_json,
-            s.original_filename,s.source_kind,s.authority_level,s.sha256,s.storage_ref,s.document_family
+            s.original_filename,s.source_kind,s.authority_level,s.sha256,s.storage_ref,s.document_family,s.size_bytes
             FROM knowledge_document_segments d JOIN knowledge_sources s ON s.id=d.source_id
             WHERE INSTR(UPPER(d.text),UPPER(?))>0 OR INSTR({compact_text},?)>0
             ORDER BY s.created_utc DESC,d.ordinal LIMIT ?"""
@@ -60,6 +58,7 @@ def _read_source_mentions(conn, model_code: str, limit: int, database_path: str 
     results = []
     for row in exact[:limit]:
         region = _object(row[12])
+        source_verified, source_error = _verify_source_file(database_path, row[17], row[16], row[19])
         results.append({
             "segment_id": row[0], "source_id": row[1], "segment_type": row[2],
             "pdf_page": row[3], "printed_page": row[4] or None, "sheet_name": row[5] or None,
@@ -68,8 +67,8 @@ def _read_source_mentions(conn, model_code: str, limit: int, database_path: str 
             "text_sha256": row[11], "region": region, "filename": row[13],
             "source_kind": row[14], "authority_level": row[15], "source_sha256": row[16],
             "storage_ref": row[17], "document_family": row[18], "source_size_bytes": row[19],
-            "source_bytes_verified": _verify_source_file(database_path, row[17], row[16], row[19])[0],
-            "source_verification_error": _verify_source_file(database_path, row[17], row[16], row[19])[1],
+            "source_bytes_verified": source_verified,
+            "source_verification_error": source_error,
         })
     return results, len(exact), len(source_ids), truncated
 
