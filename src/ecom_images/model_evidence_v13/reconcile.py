@@ -218,13 +218,13 @@ def reconcile_model_evidence(
         _validate_catalog(conn)
         validate_ingestion(conn)
         all_models = conn.execute("""SELECT id,manufacturer_name,model_code,category,series,created_utc
-            FROM catalog_models ORDER BY manufacturer_name,model_code LIMIT 5000""").fetchall()
+            FROM catalog_models ORDER BY manufacturer_name,model_code""").fetchall()
         matches = [r for r in all_models if normalize_model_code(r[2]) == code
                    and (not manufacturer or unicodedata.normalize("NFKC", r[1]).strip().casefold() == manufacturer)]
         source_mentions, source_mention_count, source_count, truncated = _read_source_mentions(conn, model_code, limit, path)
         sku_rows = conn.execute("""SELECT s.id,s.code,s.model,s.specs_json,s.active,p.code,p.name,p.category,
             st.code,st.name FROM catalog_skus s JOIN catalog_products p ON p.id=s.product_id
-            JOIN catalog_stores st ON st.id=s.store_id ORDER BY st.code,p.code,s.code LIMIT 5000""").fetchall()
+            JOIN catalog_stores st ON st.id=s.store_id ORDER BY st.code,p.code,s.code""").fetchall()
         sku_candidates = [{
             "sku_id": r[0], "sku_code": r[1], "sku_model_text": r[2], "specs": _object(r[3]),
             "active": bool(r[4]), "product_code": r[5], "product_name": r[6],
