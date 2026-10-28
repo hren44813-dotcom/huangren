@@ -46,3 +46,35 @@ class SupplierV13ImportTests(unittest.TestCase):
                 ).fetchone()[0], 0)
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM knowledge_claims").fetchone()[0], 0)
                 self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(), [])
+                metadata = json.loads(conn.execute("SELECT metadata_json FROM knowledge_sources").fetchone()[0])
+                self.assertEqual(metadata["source_url"], "https://www.alibaba.com/product-detail/CL226_123.html")
+
+    def test_reference_snapshots_import_with_original_urls_and_no_claims(self):
+        """Import the already captured listing/profile summaries with explicit provenance."""
+        spec = importlib.util.spec_from_file_location(
+            "import_supplier_capture_reference_test", ROOT / "scripts" / "import_supplier_capture_v13.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            capture = root / "empty_details"
+            capture.mkdir()
+            db = root / "v13.sqlite3"
+            args = ["--capture-dir", str(capture), "--database", str(db), "--include-reference-snapshots"]
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(module.main(args), 0)
+            with sqlite3.connect(db) as conn:
+                rows = conn.execute(
+                    "SELECT original_filename,source_kind,authority_level,metadata_json FROM knowledge_sources"
+                ).fetchall()
+                self.assertEqual(len(rows), 2)
+                by_name = {row[0]: row for row in rows}
+                listing = by_name["dgdeler_product_list_page1_2026-10-28.md"]
+                self.assertEqual(listing[1:3], ("other", "unverified"))
+                listing_metadata = json.loads(listing[3])
+                self.assertEqual(listing_metadata["page_kind"], "product_listing_snapshot")
+                self.assertEqual(listing_metadata["source_url"], "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq")
+                profile = by_name["dgdeler_supplier_profile_2026-10-28.md"]
+                self.assertEqual(json.loads(profile[3])["source_url"], "https://dgdeler.en.alibaba.com/")
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM knowledge_claims").fetchone()[0], 0)
