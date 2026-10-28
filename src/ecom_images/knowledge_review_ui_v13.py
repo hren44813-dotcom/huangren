@@ -132,7 +132,7 @@ def _render_document_import(st) -> None:
             safe_name = _safe_uploaded_filename(uploaded.name)
             kind = next(key for key, value in _SOURCE_KINDS.items() if value == kind_label)
             authority = next(key for key, value in _AUTHORITY.items() if value == authority_label)
-            with tempfile.TemporaryDirectory(prefix="huangren-review-") as temporary_directory:
+            with tempfile.TemporaryDirectory(prefix="huangren-review-", dir=DEFAULT_DB.parent) as temporary_directory:
                 temporary_path = Path(temporary_directory) / safe_name
                 temporary_path.write_bytes(raw)
                 result = import_document(
