@@ -140,7 +140,7 @@ def _stage_file(source:Path,root:Path,max_bytes:int)->tuple[Path,str,int,Path,st
     suffix=source.suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
         if suffix==".doc": raise ValueError("不支持旧版 .doc；请在 Word 中另存为 .docx 后导入")
-        raise ValueError(f"不支持的文件格式：{suffix or '无扩展名'}；支持 PDF、DOCX、MD、TXT、XLSX、XLSM、XLS")
+        raise ValueError(f"不支持的文件格式：{suffix or '无扩展名'}；支持 PDF、DOCX、MD、TXT、XLSX、XLSM、XLS、HTML")
     if not source.exists() or not source.is_file(): raise ValueError("原始资料文件不存在或不是普通文件")
     if source.stat().st_size<=0: raise ValueError("原始资料文件为空")
     if source.stat().st_size>max_bytes: raise ValueError(f"原始资料超过大小限制（{max_bytes} 字节）")
