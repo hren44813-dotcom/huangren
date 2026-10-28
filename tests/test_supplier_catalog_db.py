@@ -145,9 +145,15 @@ class SupplierCatalogDatabaseTests(unittest.TestCase):
         }
         (details / f"{item['item_id']}.json").write_text(json.dumps(detail_record), encoding="utf-8")
         (details / f"{item['item_id']}.txt").write_text("CL226 hinge Material SUS304", encoding="utf-8")
+        pages = self.capture / "pages"
+        pages.mkdir()
+        (pages / "page_001.json").write_text(json.dumps({
+            "page_number": 1, "pagination_text": "1/1",
+            "items": [{"product_url": "https://www.alibaba.com/product-detail/CL226_1601801131375.html"}],
+        }), encoding="utf-8")
         (self.capture / "catalog_audit.json").write_text(json.dumps({"status": "complete"}), encoding="utf-8")
         (self.capture / "details_audit.json").write_text(json.dumps({"status": "complete"}), encoding="utf-8")
-        summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=None)
+        summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=None, require_details=True)
         self.assertEqual(summary["status"], "complete")
         self.assertEqual(summary["details_inserted"], 1)
         with open_supplier_db(self.db) as conn:
@@ -220,6 +226,30 @@ class SupplierCatalogDatabaseTests(unittest.TestCase):
         self.assertEqual(summary["status"], "partial")
         self.assertTrue(summary["detail_collection_requested"])
         self.assertEqual(summary["detail_audit_status"], "partial")
+
+
+    def test_forged_complete_audit_does_not_override_real_missing_pages(self):
+        """Legacy reports cannot grant a complete run without all real checkpoint files."""
+        (self.capture / "catalog_audit.json").write_text(json.dumps({"status": "complete"}), encoding="utf-8")
+        (self.capture / "details_audit.json").write_text(json.dumps({"status": "complete"}), encoding="utf-8")
+        summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=self.snapshot)
+        self.assertEqual(summary["status"], "partial")
+        self.assertIn("no_page_checkpoints", summary["independent_validation_failures"])
+        self.assertEqual(summary["listing_audit_status"], "partial")
+
+    def test_sync_require_details_cannot_call_listing_only_complete(self):
+        """Requiring detail coverage fails even if one listing page is fully captured."""
+        pages = self.capture / "pages"
+        pages.mkdir()
+        item = self.item()
+        (pages / "page_001.json").write_text(json.dumps({
+            "page_number": 1, "pagination_text": "1/1", "items": [item],
+        }), encoding="utf-8")
+        summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=self.snapshot,
+                                        require_details=True)
+        self.assertEqual(summary["status"], "partial")
+        self.assertEqual(summary["detail_audit_status"], "partial")
+        self.assertEqual(len(summary["independent_capture_validation"]["missing_detail_ids"]), 1)
 
 
 if __name__ == "__main__":

@@ -26,11 +26,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     sync.add_argument("--database", type=Path, default=DEFAULT_DB)
     sync.add_argument("--dry-run", action="store_true", help="只预览输入数量，不修改数据库。")
     sync.add_argument("--require-complete", action="store_true", help="若采集审计不是 complete，则返回退出码 2。")
+    sync.add_argument("--require-details", action="store_true", help="所有目录商品均必须有详情和非空正文。")
     sync.add_argument("--export-dir", type=Path, default=None, help="CSV/审计导出目录，默认在采集目录下 exports/。")
 
     audit = sub.add_parser("audit", help="检查 SQLite 完整性、外键和数据覆盖。")
     audit.add_argument("--database", type=Path, default=DEFAULT_DB)
     audit.add_argument("--require-complete", action="store_true", help="最新采集批次也必须为 complete。")
+    audit.add_argument("--require-details", action="store_true", help="最新批次必须实际执行且完成详情采集。")
 
     export = sub.add_parser("export", help="导出最新商品表、价格历史、型号提及和规格属性。")
     export.add_argument("--database", type=Path, default=DEFAULT_DB)
@@ -52,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
                 capture_dir=args.capture_dir,
                 snapshot_json=None if args.no_snapshot else args.snapshot_json,
                 dry_run=args.dry_run,
+                require_details=args.require_details,
             )
             if not args.dry_run:
                 export_dir = args.export_dir or (args.capture_dir / "exports")
@@ -69,7 +72,13 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(report, ensure_ascii=False, indent=2))
             if not report["ok"]:
                 return 3
-            if args.require_complete and (not report.get("latest_run") or report["latest_run"]["status"] != "complete"):
+            latest = report.get("latest_run")
+            if args.require_complete and (not latest or latest["status"] != "complete"):
+                return 2
+            if args.require_details and (
+                not latest or latest["status"] != "complete"
+                or latest.get("summary", {}).get("detail_audit_status") != "complete"
+            ):
                 return 2
             return 0
         if args.command == "export":

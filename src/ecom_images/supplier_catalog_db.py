@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from .supplier_catalog_capture import enrich_detail_payload, normalize_url
+from .supplier_capture_validation import inspect_supplier_capture
 
 SCHEMA_VERSION = 1
 SUPPLIER_NAME = "Dongguan Dele Hardware Technology Co., Ltd."
@@ -579,7 +580,7 @@ def _insert_detail(conn: sqlite3.Connection, run_id: str, product_id: str, item:
 def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
                           capture_dir: str | Path = DEFAULT_CAPTURE_DIR,
                           snapshot_json: str | Path | None = DEFAULT_SNAPSHOT,
-                          dry_run: bool = False) -> dict:
+                          dry_run: bool = False, require_details: bool = False) -> dict:
     """Load capture checkpoints, listing observations and detail evidence into normalized SQLite."""
     capture = Path(capture_dir).expanduser().absolute()
     snapshot = Path(snapshot_json).expanduser().absolute() if snapshot_json else None
@@ -589,12 +590,14 @@ def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
     items = list(unique_items.values())
     source_url = str(_first(catalog, "source_url", default=(catalog.get("source") or {}).get("url", SUPPLIER_URL)))
     manifest_sha = _manifest(catalog, pages, details, errors)
+    verified_capture = inspect_supplier_capture(capture, require_details=require_details)
     summary = {
         "dry_run": dry_run, "database": str(Path(path).expanduser().absolute()),
         "capture_dir": str(capture), "snapshot_json": str(snapshot) if snapshot else None,
         "valid_page_checkpoints": len(pages), "unique_listing_products": len(items),
         "detail_records": len(details), "input_errors": len(errors), "manifest_sha256": manifest_sha,
         "creates_verified_claims": False,
+        "independent_capture_validation": verified_capture,
     }
     if dry_run:
         summary["status"] = "preview"
@@ -658,27 +661,18 @@ def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
                     detail_missing_body.append(str(record.get("item_id", "")))
                 detail_inserted += int(_insert_detail(conn, run_id, product_id, next((x for x in items if _item_url(x) == item_url), {}),
                                                       record, detail_dir))
-            audit_path = capture / "catalog_audit.json"
-            detail_audit_path = capture / "details_audit.json"
-            listing_audit = _load_json(audit_path) if audit_path.is_file() else {}
-            detail_audit = _load_json(detail_audit_path) if detail_audit_path.is_file() else {}
-            details_dir = capture / "details"
-            detail_requested = (
-                (capture / "details_collection_requested.json").is_file()
-                or bool(details)
-                or (details_dir / "capture_errors.json").is_file()
-            )
-            detail_audit_status = detail_audit.get("status", "not_available") if detail_requested else "not_requested"
+            detail_requested = verified_capture["detail_requested"]
+            detail_audit_status = verified_capture["detail_status"]
             status = "complete" if (
-                listing_audit.get("status") == "complete"
-                and (not detail_requested or detail_audit.get("status") == "complete")
+                verified_capture["status"] == "complete"
                 and not errors and not detail_missing_body
             ) else "partial"
             summary.update({
                 "run_id": run_id, "supplier_id": supplier_id, "status": status,
                 "products_seen": len(items), "observations_inserted": inserted_observations,
                 "observations_unchanged": unchanged_observations, "details_inserted": detail_inserted,
-                "listing_audit_status": listing_audit.get("status", "not_available"),
+                "listing_audit_status": verified_capture["listing_status"],
+                "independent_validation_failures": verified_capture["failures"],
                 "detail_audit_status": detail_audit_status,
                 "detail_collection_requested": detail_requested,
                 "detail_missing_body_count": len(detail_missing_body),
