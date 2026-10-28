@@ -100,6 +100,8 @@ def _evidence_ready(claim: dict[str, Any]) -> tuple[bool, list[str]]:
         and item["authority_level"] in _TRUSTED_AUTHORITIES
         and item["literal_excerpt"].strip()
         and _has_locator(item)
+        and item.get("source_bytes_verified") is True
+        and item.get("segment_hash_verified") is not False
     ]
     independent_support = [
         item for item in reviews
@@ -108,7 +110,11 @@ def _evidence_ready(claim: dict[str, Any]) -> tuple[bool, list[str]]:
     if claim.get("state") != "accepted":
         reasons.append("参数主张尚未处于 accepted 状态")
     if not trusted_support:
-        reasons.append("缺少带原文定位的制造商受控资料或独立测试支持证据")
+        reasons.append("缺少带原文定位、原件指纹有效的制造商受控资料或独立测试支持证据")
+    if any(item["role"] == "supports" and item.get("source_bytes_verified") is not True for item in evidence):
+        reasons.append("支持证据原始文件缺失或 SHA-256/文件大小与登记值不一致")
+    if any(item["role"] == "supports" and item.get("segment_hash_verified") is False for item in evidence):
+        reasons.append("支持证据引用的索引片段不存在或文本指纹不一致")
     if not independent_support:
         reasons.append("缺少第二复核人、制造商或独立实验室的支持性复核")
     if any(item["role"] == "contradicts" for item in evidence):
