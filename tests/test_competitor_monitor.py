@@ -179,14 +179,17 @@ class CompetitorMonitoringTests(unittest.TestCase):
         row = {field: "" for field in fields}
         row["备注"] = "=HYPERLINK('bad')"
         row["SKU"] = "+1+2"
+        row["变动金额"] = "-0.70"
         content = report_csv({"rows": [row]}).decode("utf-8-sig")
         parsed = list(csv.DictReader(io.StringIO(content)))[0]
         self.assertEqual(parsed["SKU"], "'+1+2")
         self.assertEqual(parsed["备注"], "'=HYPERLINK('bad')")
+        self.assertEqual(parsed["变动金额"], "-0.70")
 
     def test_streamlit_mount_has_guided_workflow(self):
         app = (ROOT / "app.py").read_text(encoding="utf-8")
-        self.assertIn("⑧ 竞品 SKU 每日监测", app)
+        self.assertIn('"竞品监测": ["竞品 SKU 每日监测"]', app)
+        self.assertIn('if page == "竞品 SKU 每日监测":', app)
         self.assertIn("render_competitor_monitor(st)", app)
         ui = (ROOT / "src/ecom_images/competitor_monitor_ui.py").read_text(encoding="utf-8")
         self.assertIn("预检数据", ui)

@@ -321,8 +321,13 @@ def report_csv(report: dict) -> bytes:
     writer.writeheader()
     for row in report["rows"]:
         safe = {}
+        numeric_fields = {"本次价格", "前次价格", "变动金额", "链接销量"}
         for field in fields:
             text = "" if row[field] is None else str(row[field])
-            safe[field] = "'" + text if text.lstrip()[:1] in ("=", "+", "-", "@") else text
+            # Preserve legitimate negative numeric deltas while neutralizing untrusted text.
+            if field in numeric_fields and re.fullmatch(r"-?\d+(?:\.\d+)?", text):
+                safe[field] = text
+            else:
+                safe[field] = "'" + text if text.lstrip()[:1] in ("=", "+", "-", "@") else text
         writer.writerow(safe)
     return ("\ufeff" + stream.getvalue()).encode("utf-8")
