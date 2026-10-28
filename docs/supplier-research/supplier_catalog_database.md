@@ -78,3 +78,12 @@ The workflow uploads the SQLite database, JSON checkpoints, text detail captures
 - Prices, MOQ, sales, delivery estimates and product-title specifications are timestamped seller-page observations. They are not verified manufacturer facts.
 - V13 document import stores detail Markdown as supplier_document / unverified. It does not create accepted parameter claims or automatically bind a store SKU to a manufacturer model.
 - Browser profiles, cookies, API credentials and local databases must not be committed. The database is not a tamper-proof audit log; its append-only triggers are an application-level guardrail.
+
+## 第二批：刷新采集与断点续采（批次隔离）
+
+- **新的一次价格观察**：`python scripts/supplier_catalog_capture.py listing --refresh-existing --max-pages 139` 会建立新的 `listing_batch.json`，每页检查点标记 `capture_batch_id`。旧批次的页面不会被计入当次 `catalog.json` 或完整性审核；旧 SQLite 观察记录仍可用于历史价格分析。
+- **接着上一次未完成的采集**：运行 `listing --max-pages 139`（不加 `--refresh-existing`）。仅跳过同批次、非空、分页一致且链接有效的检查点；失败页会尝试重采。
+- **Windows 一键脚本**：首次执行将启动新的批次；中断后原命令会继续同一批次。需要重新开始新一天的观察时，加 `-NewBatch`。此前保存的历史页面不会被误认为本次新增的有效数据。
+- **详情采集**：同批次已保存的有效商品正文会跳过；空正文、无效商品地址或旧批次详情会重新采集。成功重试或跳过时清理已解决的 `capture_errors.json` 失败项。
+- **验收状态**：`scripts/verify_supplier_pipeline.py` 的独立原始文件校验是最终完成判定；商品列表和详情分别有 `listing_status` / `detail_status`。列表-only 没有请求详情时可报告 complete，但不代表详情已采集。
+- **注意**：系统不绕过登录/验证码；首次刷新若访问受限，将保留 partial 及已有文件。不可把 SQLite 完整性、历史页面数量或未修改的第一页面快照当成当天采集完成。

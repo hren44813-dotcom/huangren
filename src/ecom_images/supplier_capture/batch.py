@@ -58,9 +58,18 @@ def reusable_page(record: dict, page_number: int, batch: dict | None) -> bool:
     if not isinstance(items, list) or not items:
         return False
     pagination = re.search(r"\b(\d+)\s*/\s*(\d+)\b", str(record.get("pagination_text") or ""))
-    return bool(pagination and int(pagination.group(1)) == page_number
-                and int(pagination.group(2)) >= page_number
-                and all(isinstance(item, dict) and item.get("product_url") for item in items))
+    if not pagination or int(pagination.group(1)) != page_number or int(pagination.group(2)) < page_number:
+        return False
+    from ..supplier_capture_validation import validate_alibaba_url
+    try:
+        return all(
+            isinstance(item, dict)
+            and item.get("page_number", page_number) == page_number
+            and bool(validate_alibaba_url(item.get("product_url"), require_product=True))
+            for item in items
+        )
+    except ValueError:
+        return False
 
 
 def reusable_detail(record: dict, *, item_id: str, listing_url: str,

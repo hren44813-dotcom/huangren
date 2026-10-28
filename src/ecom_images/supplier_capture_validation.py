@@ -271,6 +271,8 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
         "missing_from_catalog": not_in_catalog,
         "valid_detail_products": len(valid_detail_ids),
         "missing_detail_ids": missing_detail_ids,
+        "status_reason": "全部必要数据已通过原始文件校验" if status == "complete"
+                         else "当前批次存在缺失、无效数据或验证失败；详见 failures",
         "unmatched_detail_ids": unmatched_detail_ids,
         "invalid_pages": invalid_pages,
         "invalid_details": invalid_details,
