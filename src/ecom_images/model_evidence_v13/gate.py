@@ -21,12 +21,14 @@ def evaluate_content_gate(
     if not isinstance(required_attributes, list) or not required_attributes or len(required_attributes) > 20:
         raise ValueError("required_attributes 必须是1到20项的参数名称列表")
     attributes = []
+    attribute_labels: dict[str, str] = {}
     for item in required_attributes:
         if not isinstance(item, str) or not item.strip() or len(item) > 150:
             raise ValueError("参数名称无效")
         key = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", item)).strip().casefold()
         if key not in attributes:
             attributes.append(key)
+            attribute_labels[key] = item.strip()
     report = reconcile_model_evidence(
         path, model_code=model_code, manufacturer_name=manufacturer_name, limit=500,
     )
@@ -57,11 +59,11 @@ def evaluate_content_gate(
         ]
         conflict = next((c for c in model["conflicts"] if c["normalized_attribute"] == attribute_key), None)
         if conflict:
-            reasons.append(f"参数“{attribute_key}”存在跨来源/跨 SKU 数值冲突，必须先解决")
+            reasons.append(f"参数“{attribute_labels.get(attribute_key, attribute_key)}”存在跨来源/跨 SKU 数值冲突，必须先解决")
             continue
         eligible = [claim for claim in attr_claims if claim["can_use_for_content"]]
         if not eligible:
-            reasons.append(f"参数“{attribute_key}”没有满足来源、定位、独立复核和无冲突条件的 accepted 主张")
+            reasons.append(f"参数“{attribute_labels.get(attribute_key, attribute_key)}”没有满足来源、定位、独立复核和无冲突条件的 accepted 主张")
             continue
         eligible.sort(key=lambda item: (len(item["evidence"]), item["created_utc"]), reverse=True)
         claim = eligible[0]
