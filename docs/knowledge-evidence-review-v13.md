@@ -15,7 +15,9 @@ streamlit run app.py
 
 ## 导入资料
 
-通过现有文档导入命令导入受控资料、供应商文件或内部资料：
+可以在页面顶部展开「导入原始资料」，上传单个 PDF、DOCX、Markdown、TXT 或 Excel 文件，并填写资料类型、来源等级和可选的文档编号/修订信息。界面会检查扩展名与 100 MiB 大小限制，再调用与 CLI 相同的导入和解析逻辑；临时上传副本在导入结束后清理，索引原文保存在本机。
+
+也可以使用命令行批量导入：
 
 ~~~bash
 python scripts/knowledge_ingest_v13.py import-file --file "资料/GL1-336产品目录.pdf" --kind manufacturer_document --authority user_supplied
