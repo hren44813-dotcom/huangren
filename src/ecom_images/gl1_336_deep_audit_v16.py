@@ -36,6 +36,12 @@ def validate_evidence(e:dict[str,Any])->dict[str,Any]:
  for k in ("physical_product_identity","store_sku_binding","independent_engineer_review","manufacturer_confirmation","independent_measurement"):
   if matrix.get(k) not in {"not_verified","not_performed","not_obtained"}: errors.append(f"verification matrix overstates {k}")
  return {"ok":not errors,"version":EXPECTED_SCHEMA,"target_model":target.get("model"),"claims":len(e.get("claims",[])),"catalog_part_code_rows":len(codes),"open_conflicts":sorted(conflicts),"independent_engineering_verifications":0,"errors":errors}
+def exact_model_occurrences(text:str,model:str="GL1-336")->list[str]:
+ """Find exact model tokens; suffixes and longer codes must not match."""
+ return re.findall(r"(?<![A-Z0-9.\-])"+re.escape(model.upper())+r"(?![A-Z0-9.\-])",text.upper())
+def extract_code_forms(text:str)->list[str]:
+ """Return literal text-layer code forms without normalizing O to zero."""
+ return sorted(set(re.findall(r"HC[O0]1-\d{5}",text)))
 def sha256_file(path:Path)->str:
  h=hashlib.sha256()
  with path.open("rb") as f:
@@ -48,15 +54,15 @@ def audit_pdf(pdf_path:Path,e:dict[str,Any],out:Path)->dict[str,Any]:
  if actual!=fp["sha256"] or size!=fp["size_bytes"]: raise ValueError("Source fingerprint mismatch; refusing to audit a different PDF.")
  d=fitz.open(pdf_path)
  if len(d)!=fp["pdf_pages"]: raise ValueError(f"PDF page count mismatch: expected {fp['pdf_pages']}, got {len(d)}")
- n=src["page_locator"]["pdf_page_1based"];p=d[n-1];text=p.get_text();hits=re.findall(r"(?<![A-Z0-9.\\-])GL1-336(?![A-Z0-9.\\-])",text.upper())
+ n=src["page_locator"]["pdf_page_1based"];p=d[n-1];text=p.get_text();hits=exact_model_occurrences(text,"GL1-336")
  if len(hits)<2 or "N.m" not in text or "1215" not in text: raise ValueError("Target page anchors GL1-336 / N.m / 1215 not all found.")
  out.mkdir(parents=True,exist_ok=True);crops=[]
  for item in src.get("derived_artifacts",[]):
   pix=p.get_pixmap(matrix=fitz.Matrix(1.4,1.4),clip=fitz.Rect(*item["crop_pdf_user_space"]),alpha=False);path=out/item["file"];pix.save(path);digest=sha256_file(path)
   crops.append({"file":item["file"],"sha256":digest,"reference_sha256":item["sha256"],"reference_hash_matches":digest==item["sha256"],"bytes":path.stat().st_size,"width_px":pix.width,"height_px":pix.height,"note":"Renderer-version differences may change PNG bytes; original PDF hash is the primary identity check."})
  (out/"page37_text_layer.txt").write_text(text,encoding="utf-8")
- result={"version":EXPECTED_SCHEMA,"source_sha256":actual,"source_size_bytes":size,"pdf_pages":len(d),"pdf_page_1based":n,"printed_page_visible":src["page_locator"]["printed_page_visible"],"exact_model_text_occurrences":len(hits),"catalog_torque_header_found":"N.m" in text,"catalog_material_label_found":"1215" in text,"text_layer_code_forms":sorted(set(re.findall(r"HC[O0]1-\\d{5}",text))),"rendered_crops":crops,"source_revision_current":"unknown","physical_item_identity":"not_verified","engineering_parameters":"catalog_transcribed_not_independently_verified","store_sku_binding":"not_verified","warning":"Hash verifies the supplied bytes only; catalog transcription is not an engineering test."}
- (out/"gl1_336_pdf_audit_v16.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8");return result
+ result={"version":EXPECTED_SCHEMA,"source_sha256":actual,"source_size_bytes":size,"pdf_pages":len(d),"pdf_page_1based":n,"printed_page_visible":src["page_locator"]["printed_page_visible"],"exact_model_text_occurrences":len(hits),"catalog_torque_header_found":"N.m" in text,"catalog_material_label_found":"1215" in text,"text_layer_code_forms":extract_code_forms(text),"rendered_crops":crops,"source_revision_current":"unknown","physical_item_identity":"not_verified","engineering_parameters":"catalog_transcribed_not_independently_verified","store_sku_binding":"not_verified","warning":"Hash verifies the supplied bytes only; catalog transcription is not an engineering test."}
+ (out/"gl1_336_pdf_audit_v16.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf-8");return result
 def main(argv:list[str]|None=None)->int:
  p=argparse.ArgumentParser(description=__doc__);p.add_argument("pdf",type=Path);p.add_argument("--evidence",type=Path,default=Path("assets/gl1_336_deep_evidence_v16.json"));p.add_argument("--output-dir",type=Path,default=Path("build/gl1_336_v16"));a=p.parse_args(argv)
  e=load_evidence(a.evidence);v=validate_evidence(e)

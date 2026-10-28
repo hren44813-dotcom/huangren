@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy,json,sys,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/"src"))
-from ecom_images.gl1_336_deep_audit_v16 import validate_evidence
+from ecom_images.gl1_336_deep_audit_v16 import validate_evidence, exact_model_occurrences, extract_code_forms
 class GL1336DeepAuditV16Tests(unittest.TestCase):
  @classmethod
  def setUpClass(cls): cls.e=json.loads((ROOT/"assets/gl1_336_deep_evidence_v16.json").read_text(encoding="utf-8"))

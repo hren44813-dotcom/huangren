@@ -1,7 +1,7 @@
 {
   "version": "16.0",
   "local_unit_tests": {
-    "passed": 18,
+    "passed": 20,
     "failed": 0
   },
   "source_pdf_audit": {
@@ -12,7 +12,7 @@
     "target_page_model_occurrences": 2,
     "crop_reference_hashes_match": true
   },
-  "ci_status": "triggered_by_commit_and_to_be_checked",
+  "ci_status": "CI status tracked in commit-specific GitHub Actions; source PDF remains private and is audited locally.",
   "engineering_verification": 0,
   "physical_measurement": 0,
   "manufacturer_confirmation": 0,
