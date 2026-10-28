@@ -111,7 +111,7 @@ def list_review_claims(
                   SELECT 1 FROM catalog_sku_model_links l JOIN catalog_models cm ON cm.id=l.model_id
                   WHERE l.sku_id=c.subject_id AND cm.model_code=? COLLATE NOCASE
                   AND (SELECT ev.state FROM catalog_sku_model_events ev WHERE ev.link_id=l.id
-                       ORDER BY ev.event_id DESC LIMIT 1)='confirmed')))"""
+                       ORDER BY ev.event_id DESC LIMIT 1)='confirmed'))))"""
             args.extend((code, code, code))
         if attribute.strip():
             sql += " AND INSTR(UPPER(c.attribute),UPPER(?))>0"
