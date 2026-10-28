@@ -209,6 +209,11 @@ class SupplierCatalogDatabaseTests(unittest.TestCase):
             }],
         }), encoding="utf-8")
         self.write_snapshot([item])
+        (self.capture / "catalog.json").write_text(json.dumps({
+            "supplier": "Dongguan Dele Hardware Technology Co., Ltd.",
+            "source_url": "https://dgdeler.en.alibaba.com/productlist.html",
+            "items": [item],
+        }), encoding="utf-8")
         (self.capture / "catalog_audit.json").write_text(json.dumps({"status": "complete"}), encoding="utf-8")
         (self.capture / "details_audit.json").write_text(json.dumps({"status": "partial"}), encoding="utf-8")
         summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=self.snapshot)

@@ -198,7 +198,8 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
     }
     listing_complete = not any(x in listing_blockers for x in failures)
     detail_requested = require_details or (root / "details_collection_requested.json").exists() or bool(detail_files)
-    detail_complete = not any(x in detail_blockers for x in failures)
+    # No product inventory means detail coverage is unknown, not "complete".
+    detail_complete = bool(catalog_ids) and not any(x in detail_blockers for x in failures)
     status = "complete" if listing_complete and (not detail_requested or detail_complete) else "partial"
     return {
         "status": status,
