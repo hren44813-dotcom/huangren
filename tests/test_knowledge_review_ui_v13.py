@@ -17,5 +17,9 @@ class KnowledgeReviewUIWiringTests(unittest.TestCase):
         self.assertIn("⑦ 参数证据审核",app)
         self.assertIn("with knowledge_tab:",app)
         self.assertIn("render_knowledge_review(st)",app)
+        ui=(ROOT/"src/ecom_images/knowledge_review_ui_v13.py").read_text(encoding="utf-8")
+        self.assertIn("导入原始资料",ui)
+        self.assertIn("st.file_uploader",ui)
+        self.assertIn("import_document(",ui)
 
 if __name__=="__main__": unittest.main(verbosity=2)
