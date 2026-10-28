@@ -256,3 +256,15 @@ python scripts/knowledge_ingest_v13.py audit
 ```
 
 详细说明见 [V13 文档导入、解析与证据定位](docs/database-knowledge-ingestion-v13.md)。原始资料默认存储在被 Git 忽略的 `.local/knowledge_sources/`；导入只建立来源索引，不自动生成已接受的参数主张，也不自动绑定同名 SKU 与制造商型号。旧版 Word `.doc` 需先另存为 `.docx`。
+
+
+## V13 参数证据审核工作流
+
+第四阶段已在 Streamlit 中文界面新增「⑦ 参数证据审核」页：按型号/参数检索原始资料，查看 PDF 页码与高亮区域、Markdown/TXT 行号、DOCX 段落/表格及 Excel 单元格；人工填写候选参数后原子创建待复核主张和来源证据，并支持追加复核、查看状态历史及处理未解决冲突。
+
+~~~bash
+python -m pip install -r requirements-ui.txt
+streamlit run app.py
+~~~
+
+详细操作、证据门槛与限制见 [V13 参数证据审核工作流](docs/knowledge-evidence-review-v13.md)。系统不会自动接受参数或确认 SKU 映射；原始资料和 SQLite 数据库应在本地单独备份。
