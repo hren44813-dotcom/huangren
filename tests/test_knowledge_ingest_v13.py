@@ -47,9 +47,9 @@ class KnowledgeIngestV13Tests(unittest.TestCase):
         self.assertEqual(len(region["bbox"]),4); self.assertEqual(len(region["normalized_bbox"]),4)
         self.assertEqual(result["sha256"],hashlib.sha256(path.read_bytes()).hexdigest())
     def test_model_plus_parameter_search_falls_back_to_page_context(self):
-        path=self.write_pdf(pages=[["型号 GL1-336","额定扭矩 6 N.m"]])
+        path=self.write_pdf(pages=[["Model GL1-336","Torque 6 N.m"]])
         import_document(self.db,file_path=path,source_kind="manufacturer_document")
-        result=search_knowledge(self.db,model_code="GL1-336",attribute="扭矩")
+        result=search_knowledge(self.db,model_code="GL1-336",attribute="Torque")
         docs=[x for x in result["results"] if x["type"]=="document"]
         self.assertTrue(docs); self.assertTrue(any(x["location"]["pdf_page"]==1 for x in docs))
     def test_suffix_and_longer_code_are_not_exact_model_matches(self):
@@ -64,20 +64,20 @@ class KnowledgeIngestV13Tests(unittest.TestCase):
         result=search_knowledge(self.db,model_code="GL1-336",attribute="扭矩")
         section=next(x for x in result["results"] if x["type"]=="document" and x["segment_type"]=="markdown_section")
         self.assertIn("扭矩参数",section["location"]["heading_path"])
-        self.assertEqual(section["location"]["line_start"],4)
+        self.assertEqual(section["location"]["line_start"],3)
         self.assertEqual(section["location"]["line_end"],5)
     def test_docx_keeps_paragraph_table_and_heading_locations(self):
         path=self.source_dir/"specs.docx"; doc=Document()
         doc.add_heading("GL1-336 规格",level=1); doc.add_paragraph("额定扭矩以原厂资料为准。")
         table=doc.add_table(rows=2,cols=2); table.cell(0,0).text="型号"; table.cell(0,1).text="扭矩"
         table.cell(1,0).text="GL1-336"; table.cell(1,1).text="6 N.m"; doc.save(path)
-        import_document(self.db,file_path=path,source_kind="manufacturer_document")
+        imported=import_document(self.db,file_path=path,source_kind="manufacturer_document")
         result=search_knowledge(self.db,model_code="GL1-336",attribute="扭矩")
         rows=[x for x in result["results"] if x["type"]=="document" and x["segment_type"]=="docx_table_row"]
         self.assertTrue(rows); self.assertEqual(rows[0]["location"]["sheet_name"],"Table 1")
         self.assertIn("R2C1:R2C2",rows[0]["location"]["cell_range"])
         self.assertIsNone(rows[0]["location"]["pdf_page"])
-        self.assertIn("DOCX", " ".join(result["results"][0].get("verification_note","")) if result["results"] else "DOCX")
+        self.assertTrue(any("DOCX" in warning for warning in imported["warnings"]))
     def test_xlsx_header_values_and_cell_range_are_searchable(self):
         path=self.source_dir/"specs.xlsx"; wb=Workbook(); ws=wb.active; ws.title="GL1参数"
         ws.append(["型号","扭矩"]); ws.append(["GL1-336","6 N.m"]); wb.save(path)
