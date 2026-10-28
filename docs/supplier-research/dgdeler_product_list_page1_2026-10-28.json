@@ -1,0 +1,500 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "dgdeler_alibaba_product_list_page1_2026-10-28",
+  "captured_at": "2026-10-28",
+  "source": {
+    "platform": "Alibaba.com",
+    "supplier": "Dongguan Dele Hardware Technology Co., Ltd.",
+    "url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+    "canonical_url": "https://dgdeler.en.alibaba.com/productlist.html",
+    "capture_method": "connected_browser_rendered_page_text",
+    "raw_html_saved": false,
+    "raw_html_sha256": null,
+    "displayed_currency": "CN¥",
+    "displayed_pagination": "1/139",
+    "visible_item_count": 16,
+    "total_product_count": null,
+    "pagination_note": "The page showed 1/139. This snapshot records the 16 visible items on the captured page only; total product count was not inferred.",
+    "limitations": [
+      "Prices and delivery estimates are dynamic marketplace displays and may vary by region, time, quantity, or options.",
+      "Only sales counts explicitly visible on the captured page are recorded; missing sales values are null, not zero.",
+      "Product titles and title claims are seller listing text, not independently verified technical specifications.",
+      "No original HTML or product images were archived in this snapshot.",
+      "Product detail pages have not yet been individually inspected."
+    ]
+  },
+  "items": [
+    {
+      "position": 1,
+      "title": "Recessed T Handle Lock MS858-1C Black Keyed Panel Lock for Industrial Cabinet Doors",
+      "models": [
+        "MS858-1C"
+      ],
+      "category_guess": "panel_lock",
+      "price_text": "CN¥59.93",
+      "price_min_cny": 59.93,
+      "price_max_cny": 59.93,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/Recessed-T-Handle-Lock-MS858-1C_11000039632439.html",
+      "image_asset_label": "Recessed-T-Handle-Lock-MS858-1C-Black.png_480x480.jpg",
+      "title_claims_unverified": [
+        "black",
+        "keyed",
+        "industrial cabinet doors"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 2,
+      "title": "CL226 40mm 50mm 60mm Black Square Cabinet Door Hinges 4 Hole Metal Hinges for Electrical Enclosure Industrial Equipment",
+      "models": [
+        "CL226"
+      ],
+      "category_guess": "hinge",
+      "price_text": "CN¥3.46-4.98",
+      "price_min_cny": 3.46,
+      "price_max_cny": 4.98,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": 11,
+      "delivery_text": "Delivery by Nov 21",
+      "product_url": "https://www.alibaba.com/product-detail/CL226-40mm-50mm-60mm-Black-Square_1601801131375.html",
+      "image_asset_label": "CL226-40mm-50mm-60mm-Black-Square-Cabinet.png_480x480.jpg",
+      "title_claims_unverified": [
+        "40mm",
+        "50mm",
+        "60mm",
+        "black",
+        "square",
+        "4 hole",
+        "metal"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 3,
+      "title": "CL734 Industrial Cabinet Door Hinge with Zinc Alloy or 304 Stainless Steel Options for Electrical Enclosures",
+      "models": [
+        "CL734"
+      ],
+      "category_guess": "hinge",
+      "price_text": "CN¥2.99-9.56",
+      "price_min_cny": 2.99,
+      "price_max_cny": 9.56,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": 15,
+      "delivery_text": "Delivery by Nov 25",
+      "product_url": "https://www.alibaba.com/product-detail/CL734-Industrial-Cabinet-Door-Hinge-with_1601790634252.html",
+      "image_asset_label": "CL734-Industrial-Cabinet-Door-Hinge-with-Zinc.png_480x480.jpg",
+      "title_claims_unverified": [
+        "zinc alloy option",
+        "304 stainless steel option",
+        "industrial cabinet door hinge"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 4,
+      "title": "Black Torque Hinge HC-HFM31 with Multiple Torque Options in Small and Large Sizes",
+      "models": [
+        "HC-HFM31"
+      ],
+      "category_guess": "torque_hinge",
+      "price_text": "CN¥15.53-17.26",
+      "price_min_cny": 15.53,
+      "price_max_cny": 17.26,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": "Delivery by Nov 21",
+      "product_url": "https://www.alibaba.com/product-detail/Black-Torque-Hinge-HC-HFM31-with_11000039475313.html",
+      "image_asset_label": "Black-Torque-Hinge-HC-HFM31-with-Multiple.png_480x480.jpg",
+      "title_claims_unverified": [
+        "black",
+        "multiple torque options",
+        "small and large sizes"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 5,
+      "title": "MS714-3 Wing Handle Cam Lock in 304 Stainless Steel or Zinc Alloy for Electrical Cabinet Doors",
+      "models": [
+        "MS714-3"
+      ],
+      "category_guess": "cam_lock",
+      "price_text": "CN¥9.29-17.26",
+      "price_min_cny": 9.29,
+      "price_max_cny": 17.26,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": "Delivery by Nov 21",
+      "product_url": "https://www.alibaba.com/product-detail/MS714-3-Wing-Handle-Cam-Lock_1601935934257.html",
+      "image_asset_label": "MS714-3-Wing-Handle-Cam-Lock-in.png_480x480.jpg",
+      "title_claims_unverified": [
+        "wing handle",
+        "cam lock",
+        "304 stainless steel option",
+        "zinc alloy option"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 6,
+      "title": "Cabinet Cam Lock MS705-3 Quarter Turn with Rectangular Faceplate in Black or Grey White",
+      "models": [
+        "MS705-3"
+      ],
+      "category_guess": "cam_lock",
+      "price_text": "CN¥3.72",
+      "price_min_cny": 3.72,
+      "price_max_cny": 3.72,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/Cabinet-Cam-Lock-MS705-3-Quarter_11000039545212.html",
+      "image_asset_label": "Cabinet-Cam-Lock-MS705-3-Quarter-Turn.png_480x480.jpg",
+      "title_claims_unverified": [
+        "quarter turn",
+        "rectangular faceplate",
+        "black or grey white"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 7,
+      "title": "Vending Machine Cabinet Lock Zinc Alloy Lock with 3 Keys for Water Vending Machines",
+      "models": [],
+      "category_guess": "cabinet_lock",
+      "price_text": "CN¥35.97",
+      "price_min_cny": 35.97,
+      "price_max_cny": 35.97,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/Vending-Machine-Cabinet-Lock-Zinc-Alloy_11000039657394.html",
+      "image_asset_label": "Vending-Machine-Cabinet-Lock-Zinc-Alloy-Lock.png_480x480.jpg",
+      "title_claims_unverified": [
+        "zinc alloy",
+        "3 keys",
+        "water vending machines"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "no_explicit_model_code_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 8,
+      "title": "Adjustable Torque Hinge GL1-336 30mm Round Flange in Nickel Plated Carbon Steel or Stainless Steel",
+      "models": [
+        "GL1-336"
+      ],
+      "category_guess": "torque_hinge",
+      "price_text": "CN¥16.33",
+      "price_min_cny": 16.33,
+      "price_max_cny": 16.33,
+      "moq_quantity": 2,
+      "moq_unit": "pieces",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/Adjustable-Torque-Hinge-GL1-336-30mm_11000039591452.html",
+      "image_asset_label": "Adjustable-Torque-Hinge-GL1-336-30mm-Round.png_480x480.jpg",
+      "title_claims_unverified": [
+        "adjustable torque",
+        "30mm round flange",
+        "nickel plated carbon steel option",
+        "stainless steel option"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 9,
+      "title": "304 Stainless Steel Flush Panel Latch MS866-8 Brushed Finish for Electrical Cabinets",
+      "models": [
+        "MS866-8"
+      ],
+      "category_guess": "flush_panel_latch",
+      "price_text": "CN¥15.20",
+      "price_min_cny": 15.2,
+      "price_max_cny": 15.2,
+      "moq_quantity": 62,
+      "moq_unit": "pieces",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/304-Stainless-Steel-Flush-Panel-Latch_11000039608280.html",
+      "image_asset_label": "304-Stainless-Steel-Flush-Panel-Latch-MS866.png_480x480.jpg",
+      "title_claims_unverified": [
+        "304 stainless steel",
+        "flush panel latch",
+        "brushed finish"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 10,
+      "title": "Black Flush Mount Cabinet Door Latch MS609 with Lift-Up Handle Key Locking and Non-Locking Options",
+      "models": [
+        "MS609"
+      ],
+      "category_guess": "cabinet_latch",
+      "price_text": "CN¥21.37-22.37",
+      "price_min_cny": 21.37,
+      "price_max_cny": 22.37,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": 10,
+      "delivery_text": "Delivery by Nov 22",
+      "product_url": "https://www.alibaba.com/product-detail/Black-Flush-Mount-Cabinet-Door-Latch_1601869725619.html",
+      "image_asset_label": "Black-Flush-Mount-Cabinet-Door-Latch-MS609.png_480x480.jpg",
+      "title_claims_unverified": [
+        "black",
+        "flush mount",
+        "lift-up handle",
+        "key locking and non-locking options"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 11,
+      "title": "Miniature Torque Friction Hinge 8mm 43.5mm 57mm 0.5-2.0Nm Damping Hinge for Industrial Cabinet Doors",
+      "models": [],
+      "category_guess": "miniature_torque_hinge",
+      "price_text": "CN¥8.30-9.76",
+      "price_min_cny": 8.3,
+      "price_max_cny": 9.76,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": "Delivery by Nov 21",
+      "product_url": "https://www.alibaba.com/product-detail/Miniature-Torque-Friction-Hinge-8mm-43_11000039112005.html",
+      "image_asset_label": "Miniature-Torque-Friction-Hinge-8mm-43-5mm.png_480x480.jpg",
+      "title_claims_unverified": [
+        "8mm",
+        "43.5mm",
+        "57mm",
+        "0.5-2.0Nm",
+        "damping hinge"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "no_explicit_model_code_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 12,
+      "title": "Inline Torque Hinge Iron 12x70mm with 3Nm 4Nm 10Nm Torque Options",
+      "models": [],
+      "category_guess": "inline_torque_hinge",
+      "price_text": "CN¥15.33-16",
+      "price_min_cny": 15.33,
+      "price_max_cny": 16,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": "Delivery by Nov 21",
+      "product_url": "https://www.alibaba.com/product-detail/Inline-Torque-Hinge-Iron-12x70mm-with_11000038814614.html",
+      "image_asset_label": "Inline-Torque-Hinge-Iron-12x70mm-with-3Nm.png_480x480.jpg",
+      "title_claims_unverified": [
+        "iron",
+        "12x70mm",
+        "3Nm",
+        "4Nm",
+        "10Nm torque options"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "no_explicit_model_code_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 13,
+      "title": "Black Tubular Pull Handle with A6063 Aluminum Tube and ABS Bases 200-600mm Hole Spacing 30mm Diameter LS700",
+      "models": [
+        "LS700"
+      ],
+      "category_guess": "tubular_pull_handle",
+      "price_text": "CN¥20.04-30.53",
+      "price_min_cny": 20.04,
+      "price_max_cny": 30.53,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/Black-Tubular-Pull-Handle-with-A6063_11000039198502.html",
+      "image_asset_label": "Black-Tubular-Pull-Handle-with-A6063-Aluminum.png_480x480.jpg",
+      "title_claims_unverified": [
+        "A6063 aluminum tube",
+        "ABS bases",
+        "200-600mm hole spacing",
+        "30mm diameter",
+        "black"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 14,
+      "title": "Zinc Alloy Cabinet Lock CK-1 CK-2 Push Button or Key Lock Bright Chrome for Electrical Control Cabinets",
+      "models": [
+        "CK-1",
+        "CK-2"
+      ],
+      "category_guess": "cabinet_lock",
+      "price_text": "CN¥32.65",
+      "price_min_cny": 32.65,
+      "price_max_cny": 32.65,
+      "moq_quantity": 40,
+      "moq_unit": "pieces",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/Zinc-Alloy-Cabinet-Lock-CK-1_11000039655226.html",
+      "image_asset_label": "Zinc-Alloy-Cabinet-Lock-CK-1-CK.png_480x480.jpg",
+      "title_claims_unverified": [
+        "zinc alloy",
+        "push button or key lock",
+        "bright chrome"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 15,
+      "title": "Industrial Tubular Pull Handle for CNC Machine Doors DG-DELER XAH11 with 7 Mounting Hole Spacing Options",
+      "models": [
+        "XAH11"
+      ],
+      "category_guess": "tubular_pull_handle",
+      "price_text": "CN¥14.80-23.56",
+      "price_min_cny": 14.8,
+      "price_max_cny": 23.56,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": null,
+      "product_url": "https://www.alibaba.com/product-detail/Industrial-Tubular-Pull-Handle-for-CNC_11000039197505.html",
+      "image_asset_label": "Industrial-Tubular-Pull-Handle-for-CNC-Machine.png_480x480.jpg",
+      "title_claims_unverified": [
+        "industrial tubular pull handle",
+        "CNC machine doors",
+        "7 mounting hole spacing options"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    },
+    {
+      "position": 16,
+      "title": "Industrial Tubular Pull Handle for CNC Machine Doors 180-700mm Hole Spacing Silver DG-DELER XAH61",
+      "models": [
+        "XAH61"
+      ],
+      "category_guess": "tubular_pull_handle",
+      "price_text": "CN¥17.59-29.53",
+      "price_min_cny": 17.59,
+      "price_max_cny": 29.53,
+      "moq_quantity": 1,
+      "moq_unit": "piece",
+      "sales_count_displayed": null,
+      "delivery_text": "Delivery by Nov 23",
+      "product_url": "https://www.alibaba.com/product-detail/Industrial-Tubular-Pull-Handle-for-CNC_11000039174415.html",
+      "image_asset_label": "Industrial-Tubular-Pull-Handle-for-CNC-Machine.png_480x480.jpg",
+      "title_claims_unverified": [
+        "180-700mm hole spacing",
+        "silver",
+        "CNC machine doors"
+      ],
+      "price_currency": "CNY",
+      "sales_status": "not_displayed_on_captured_listing",
+      "model_status": "model_string_explicit_in_listing_title",
+      "category_status": "derived_from_listing_title_not_official_category",
+      "title_claims_status": "seller_listing_claims_unverified",
+      "source_url": "https://dgdeler.en.alibaba.com/productlist.html?spm=a2700.shop_index.88.6.84326737Gvoopq",
+      "captured_at": "2026-10-28"
+    }
+  ]
+}

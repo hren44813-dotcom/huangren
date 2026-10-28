@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "alibaba_dgdeler_company_overview_2026-10-28",
+  "source": {
+    "platform": "Alibaba.com",
+    "source_type": "supplier_public_profile",
+    "source_url": "https://dgdeler.en.alibaba.com/",
+    "company_profile_url": "https://dgdeler.en.alibaba.com/company_profile.html",
+    "captured_at": "2026-10-28",
+    "capture_method": "browser_visible_page_text",
+    "raw_html_saved": false,
+    "raw_html_sha256": null,
+    "scope": "Company overview and navigation labels only; individual product detail pages not yet extracted.",
+    "evidence_limit": "This is a derived snapshot of visible page text, not an archived original webpage or independent verification."
+  },
+  "supplier": {
+    "name_en": {
+      "value": "Dongguan Dele Hardware Technology Co., Ltd.",
+      "status": "observed_on_page",
+      "source_text": "Dongguan Dele Hardware Technology Co., Ltd."
+    },
+    "location": {
+      "value": "Guangdong Province, China",
+      "status": "observed_on_page",
+      "source_text": "Guangdong Province, China"
+    },
+    "platform_labels": [
+      {
+        "value": "Brand Holder",
+        "status": "observed_on_page",
+        "note": "Meaning not independently verified."
+      },
+      {
+        "value": "1yr",
+        "status": "observed_on_page",
+        "note": "Recorded verbatim; does not establish legal incorporation date."
+      }
+    ],
+    "staff_count_displayed": {
+      "value": 46,
+      "status": "observed_on_page",
+      "source_text": "Total staff (46)",
+      "independently_verified": false
+    },
+    "registered_trademark_count_displayed": {
+      "value": 1,
+      "status": "observed_on_page",
+      "source_text": "Registered trademarks (1)",
+      "trademark_name_and_registration_number": "not_extracted"
+    },
+    "customization_labels": [
+      {
+        "value": "Minor customization",
+        "status": "observed_on_page"
+      },
+      {
+        "value": "Design-based customization",
+        "status": "observed_on_page"
+      }
+    ],
+    "contact_ui": {
+      "actions": [
+        "Contact supplier",
+        "Chat now"
+      ],
+      "visible_chat_name": "Peter Cao",
+      "visible_chat_status": "Available",
+      "status": "observed_in_chat_overlay",
+      "note": "Not independently verified as the formal sales contact."
+    }
+  },
+  "main_categories_as_displayed": [
+    "Door Lock",
+    "Pull Handle",
+    "Hinge",
+    "Damping Hinge Shaft"
+  ],
+  "category_links": [
+    {
+      "label": "Hot sale products",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-969259699/Hot_sale_products.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Accessories",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-915807484/Accessories.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Hinge",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-965193907/Hinge.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Damping Hinge",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-911685802/Damping_Hinge.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Torque Hinge",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-911681003/Torque_Hinge.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Hasp",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-911700201/Hasp.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Lock",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-964646407/Lock.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Lock cylinder",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-911340706/Lock_cylinder.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Plane lock",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-963643922/Plane_lock.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Handle",
+      "url": "https://dgdeler.en.alibaba.com/productgrouplist-963528746/Handle.html",
+      "products_extracted": false
+    },
+    {
+      "label": "All products",
+      "url": "https://dgdeler.en.alibaba.com/productlist.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Company profile",
+      "url": "https://dgdeler.en.alibaba.com/company_profile.html",
+      "products_extracted": false
+    },
+    {
+      "label": "Ratings and reviews",
+      "url": "https://dgdeler.en.alibaba.com/company_profile/feedback.html",
+      "products_extracted": false
+    }
+  ],
+  "certification_observations": [
+    {
+      "observation": "TÜV Rheinland branding/text is visible on the supplier page.",
+      "status": "observed_on_page_unverified",
+      "do_not_infer": [
+        "certificate_validity",
+        "certificate_holder",
+        "product_scope",
+        "specific_product_certification"
+      ]
+    },
+    {
+      "observation": "Chat overlay displays a generic message about professional certification.",
+      "source_text": "Hey! Our product has professional certification. Let me know if you’d like more info!",
+      "status": "generic_chat_message_not_proof"
+    }
+  ],
+  "not_yet_verified": [
+    "Chinese legal company name",
+    "Full registered address and incorporation date",
+    "Product-level model/SKU, price, MOQ, material, dimensions, torque, surface finish and test results",
+    "Certification number, holder, covered product models and validity",
+    "Factory/trading status, production capacity, lead time and sample policy",
+    "Ratings, review count, transaction volume and customer feedback details"
+  ],
+  "v13_ingestion_recommendation": {
+    "source_kind": "other",
+    "authority_level": "unverified",
+    "usage": "Supplier background lead only; not authoritative product-parameter evidence."
+  }
+}

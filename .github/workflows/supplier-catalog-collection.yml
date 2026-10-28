@@ -1,0 +1,127 @@
+name: Supplier catalog collection
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: "Maximum listing pages (139 for the current full catalog)"
+        required: true
+        type: number
+        default: 139
+      collect_details:
+        description: "Visit each product detail page; the full run can take hours"
+        required: true
+        type: boolean
+        default: true
+      delay_seconds:
+        description: "Delay between page and product requests"
+        required: true
+        type: number
+        default: 2.5
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supplier-catalog-collection
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Collect, audit and archive supplier catalog
+    # Live marketplace collection is opt-in: site authentication and CAPTCHA
+    # cannot be completed by an unattended GitHub-hosted runner.
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Playwright and Chromium
+        run: |
+          python -m pip install -r requirements.txt -r requirements-supplier-capture.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Seed the last known first-page checkpoint
+        run: python scripts/seed_supplier_capture.py --force
+
+      - name: Collect listing pages
+        id: listing
+        continue-on-error: true
+        run: |
+          python scripts/supplier_catalog_capture.py listing \
+            --headless --no-prompt --refresh-existing \
+            --max-pages "${{ inputs.max_pages || 139 }}" \
+            --delay "${{ inputs.delay_seconds || 2.5 }}"
+
+      - name: Collect product details
+        if: ${{ always() && inputs.collect_details }}
+        id: details
+        continue-on-error: true
+        run: |
+          python scripts/supplier_catalog_capture.py details \
+            --headless --no-prompt \
+            --delay "${{ inputs.delay_seconds || 2.5 }}" \
+            --retries 2
+
+      - name: Rebuild capture audits
+        if: always()
+        continue-on-error: true
+        run: |
+          python scripts/supplier_catalog_capture.py audit \
+            --output data/supplier_captures/dgdeler
+
+      - name: Sync normalized SQLite database and export CSV
+        if: always()
+        id: database
+        continue-on-error: true
+        run: |
+          python scripts/sync_supplier_catalog_db.py sync \
+            --capture-dir data/supplier_captures/dgdeler \
+            --snapshot-json docs/supplier-research/dgdeler_product_list_page1_2026-10-28.json \
+            --database .local/supplier_catalog.sqlite3 \
+            --export-dir data/supplier_captures/dgdeler/exports
+      - name: Independently verify checkpoint and detail coverage
+        if: always()
+        id: independent_audit
+        continue-on-error: true
+        run: |
+          python scripts/verify_supplier_pipeline.py             --capture-dir data/supplier_captures/dgdeler             --require-details --expect-status complete             --report data/supplier_captures/dgdeler/independent_validation.json
+
+      - name: Upload database, raw checkpoints and reports
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-catalog-${{ github.run_number }}
+          path: |
+            data/supplier_captures/dgdeler/
+            .local/supplier_catalog.sqlite3
+            .local/supplier_catalog.sqlite3-wal
+            .local/supplier_catalog.sqlite3-shm
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Write collection summary
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+        run: |
+          echo "## Supplier catalog collection" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Artifact: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- The database stores seller-page observations, not verified product specifications." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require a complete audited collection
+        if: always()
+        run: |
+          python scripts/sync_supplier_catalog_db.py audit \
+            --database .local/supplier_catalog.sqlite3 \
+            --require-complete --require-details

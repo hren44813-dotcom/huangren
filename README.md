@@ -26,7 +26,9 @@ python -m streamlit run app.py
 
 浏览器按终端提示访问本地界面（通常为 `http://localhost:8501`）。
 
-面板第二页接入已安装的**星河跨境电商详情技能**，可在显式同意后调用第三方 AI 服务。需要自行提供有效 API Key，可能收费；真实图片与提示词会发送给第三方，不保证 AI 输出机械结构绝对一致。
+面板按三个工作区组织功能：**素材制作**（主图策划、批量制图、SKU 审核、可选 AI）、**产品资料**（只读查询、SKU 档案、参数证据审核）、**竞品监测**（多 SKU 每日记录与价格变化报表）。左侧选择工作区和具体功能后，每次只显示一个页面。
+
+星河跨境电商详情技能位于「素材制作」工作区，可在显式同意后调用第三方 AI 服务。需要自行提供有效 API Key，可能收费；真实图片与提示词会发送给第三方，不保证 AI 输出机械结构绝对一致。
 
 详细操作说明见 [docs/web-ui.md](docs/web-ui.md)。
 
@@ -256,3 +258,64 @@ python scripts/knowledge_ingest_v13.py audit
 ```
 
 详细说明见 [V13 文档导入、解析与证据定位](docs/database-knowledge-ingestion-v13.md)。原始资料默认存储在被 Git 忽略的 `.local/knowledge_sources/`；导入只建立来源索引，不自动生成已接受的参数主张，也不自动绑定同名 SKU 与制造商型号。旧版 Word `.doc` 需先另存为 `.docx`。
+
+
+## V13 参数证据审核工作流
+
+第四阶段已在 Streamlit 中文界面新增「⑦ 参数证据审核」页：可直接上传 PDF、DOCX、Markdown、TXT、XLSX/XLSM/XLS 原始资料，也可按型号/参数检索已导入资料；支持 PDF 页码与高亮区域、Markdown/TXT 行号、DOCX 段落/表格及 Excel 单元格定位。人工填写候选参数后原子创建待复核主张和来源证据，并支持追加复核、查看状态历史及处理未解决冲突。
+
+~~~bash
+python -m pip install -r requirements-ui.txt
+streamlit run app.py
+~~~
+
+详细操作、证据门槛与限制见 [V13 参数证据审核工作流](docs/knowledge-evidence-review-v13.md)。系统不会自动接受参数或确认 SKU 映射；原始资料和 SQLite 数据库应在本地单独备份。
+
+## 供应商资料提取示例
+
+已将 DGDeler 阿里巴巴国际站主页整理为带来源链接的 Markdown 快照和 JSON，并另建跨来源核验补充。它们用于供应商背景检索，不作为具体产品参数或认证的权威证明：
+
+- [供应商主页资料快照](docs/supplier-research/dgdeler_supplier_profile_2026-10-28.md)
+- [结构化供应商资料 JSON](docs/supplier-research/dgdeler_supplier_profile_2026-10-28.json)
+- [供应商交叉核验补充](docs/supplier-research/dgdeler_cross_source_verification_2026-10-28.md)
+- [结构化交叉核验 JSON](docs/supplier-research/dgdeler_cross_source_verification_2026-10-28.json)
+
+导入 V13 时建议将网页摘要标记为 other / unverified；产品级参数需回到具体产品页面、厂家规格书或检测报告核验。
+### DGDeler 商品列表快照
+
+已从阿里巴巴国际站商品列表第 1 页保存 16 条可见商品记录（仅当前页；页面显示分页 1/139，不推断全店商品总数）：
+
+- [商品列表 Markdown](docs/supplier-research/dgdeler_product_list_page1_2026-10-28.md)
+- [结构化 JSON](docs/supplier-research/dgdeler_product_list_page1_2026-10-28.json)
+- [运营助理 CSV](docs/supplier-research/dgdeler_product_list_page1_2026-10-28.csv)
+
+价格、MOQ 和可见销量是采集时页面展示值；标题中的技术描述均标记为未验证。
+
+## 供应商商品目录采集与 SQLite 历史数据库
+
+**模块化重构（第二阶段）**：供应商采集和 SQLite 代码已拆分为每文件不超过 300 行的模块；保留原有导入接口、SQL V1 表结构、V13 知识证据库与本地默认路径。详见 [模块拆分与兼容性验收](docs/supplier-research/supplier_module_refactor.md)。
+
+**型号证据核对（第三阶段）**：新增只读型号/来源/SKU 关联报告、跨来源参数冲突检测，以及可选的制图前事实参数门禁。用 `python scripts/check_model_evidence_gate_v13.py --model-code GL1-336` 查看资料，门禁配置示例见 [型号证据门禁说明](docs/supplier-research/model-evidence-gate-v13.md)。未配置门禁的旧图片任务保持兼容。
+
+
+- 全量采集操作说明：docs/supplier-research/dgdeler_full_catalog_capture.md
+- SQLite 数据库结构、数据质量和运行流程：docs/supplier-research/supplier_catalog_database.md
+- 本次云端采集受验证码限制的审计报告：docs/supplier-research/collection_run_2026-10-28.md
+- GitHub Actions 全量采集工作流：.github/workflows/supplier-catalog-collection.yml
+- V13 来源 URL 导入：scripts/import_supplier_capture_v13.py --include-reference-snapshots（可先导入现有 16 条商品列表快照和供应商主页摘要；商品详情 Markdown 会保存详情页 URL、采集方式和记录 ID）。
+- 采集与覆盖状态说明：[DGDeler 全店采集工具](docs/supplier-research/dgdeler_full_catalog_capture.md)、[2026-10-28 采集审计](docs/supplier-research/collection_run_2026-10-28.md)。
+
+采集器会保存每页检查点，提取可见规格表、JSON-LD、图片与 SKU 选项；SQLite 会保存商品、每次价格/MOQ/销量观察、详情属性、SKU 选项、采集批次及错误历史。使用 scripts/sync_supplier_catalog_db.py 同步与导出。GitHub Actions 将数据库、CSV、JSON 检查点和审计报告上传为 30 天 artifact，不会把动态数据库二进制直接提交到公开仓库。云端自动采集已验证会遇到 Alibaba 登录/验证码限制；要完成全量数据，请在 Windows PowerShell 中运行 scripts/run_full_supplier_capture.ps1，在打开的可见浏览器里手动完成站点验证，再查看完整性审计。工具不会绕过访问控制。供应商页面字段始终标记为待核验观察值，不会自动变成已接受技术参数。
+
+
+## 阿里国际站店铺商品采集（V13）
+
+新增 scripts/crawl_alibaba_shop_v13.py，在网络可访问的情况下遍历店铺分类、列表、分页及商品详情页，将每个可访问的原始 HTML 页面通过现有 import_document() 接入 V13 知识库，保留 URL、抓取时间和 SHA-256。报告会列出型号/SKU、材质、尺寸、MOQ、价格、规格的原文候选与缺失项；不会自动接受参数主张。
+
+使用方式、已发现的分类入口、验证码限制和手动 HTML 导入方法见 [阿里国际站店铺采集说明](docs/alibaba-shop-crawl-v13.md)。
+
+运行测试：
+
+~~~bash
+python -m unittest discover -s tests -p "test_alibaba_shop_crawl_v13.py" -v
+~~~

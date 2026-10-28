@@ -93,6 +93,27 @@ class KnowledgeIngestV13Tests(unittest.TestCase):
         result=search_knowledge(self.db,model_code="GL1-336")
         item=next(x for x in result["results"] if x["type"]=="document" and x["segment_type"]=="text_line")
         self.assertEqual(item["location"]["line_start"],3)
+    def test_html_source_url_metadata_and_visible_text_are_indexed(self):
+        path=self.source_dir/"ms705.html"
+        path.write_text("""<html><head><title>MS705 panel lock</title>
+        <meta name="description" content="Industrial cabinet lock"></head><body>
+        <script>FAKE_MODEL_999</script><table>
+        <tr><td>Model</td><td>MS705</td></tr>
+        <tr><td>Material</td><td>Zinc Alloy</td></tr>
+        <tr><td>MOQ</td><td>10 pcs</td></tr></table></body></html>""",encoding="utf-8")
+        source_url="https://dgdeler.en.alibaba.com/product-detail/ms705.html"
+        imported=import_document(self.db,file_path=path,source_kind="supplier_document",authority_level="unverified",
+            source_metadata={"source_url":source_url,"page_kind":"product_detail"})
+        result=search_knowledge(self.db,model_code="MS705")
+        docs=[item for item in result["results"] if item["type"]=="document"]
+        self.assertTrue(docs)
+        self.assertTrue(any(item["source_metadata"]["source_url"]==source_url for item in docs))
+        material_result=search_knowledge(self.db,query="Material")
+        material_docs=[item for item in material_result["results"] if item["type"]=="document"]
+        self.assertTrue(any("Material | Zinc Alloy" in item["text"] for item in material_docs))
+        self.assertEqual(search_knowledge(self.db,query="FAKE_MODEL_999")["result_count"],0)
+        self.assertEqual(imported["filename"],"ms705.html")
+
     def test_reimport_is_idempotent_and_does_not_create_claims(self):
         path=self.write_pdf()
         first=import_document(self.db,file_path=path,source_kind="manufacturer_document")
