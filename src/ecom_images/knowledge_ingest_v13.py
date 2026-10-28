@@ -709,7 +709,7 @@ def _claim_results(conn:sqlite3.Connection,tokens:list[str],model:str,limit:int)
        WHERE l.sku_id=c.subject_id AND c.subject_type='sku'
        AND (SELECT ev.state FROM catalog_sku_model_events ev WHERE ev.link_id=l.id ORDER BY ev.event_id DESC LIMIT 1)='confirmed'
        ORDER BY l.created_utc LIMIT 1),'')"""
-    combined=f"COALESCE(c.attribute,'')||' '||COALESCE(c.literal_value,'')||' '||COALESCE(c.unit,'')||' '||identity
+    combined=f"COALESCE(c.attribute,'')||' '||COALESCE(c.literal_value,'')||' '||COALESCE(c.unit,'')||' '||{identity}"
     sql=f"""SELECT c.id,c.subject_type,c.subject_id,c.attribute,c.literal_value,c.unit,c.claim_kind,c.normalized_value_json,
       c.created_by,c.created_utc,(SELECT e.state FROM knowledge_claim_events e WHERE e.claim_id=c.id
       ORDER BY e.event_id DESC LIMIT 1),COALESCE(m.model_code,''),COALESCE(s.model,''),COALESCE(s.code,''),
