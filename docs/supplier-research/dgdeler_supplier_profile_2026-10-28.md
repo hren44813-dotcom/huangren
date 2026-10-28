@@ -81,3 +81,6 @@
 | 平台标签 | Brand Holder；1yr |
 
 最后更新：2026-10-28
+## 交叉核验补充
+
+已另行整理供应商自有网站公开页面中的产品型号线索、联系信息和公开资料不一致项。详见 [DGDeler 供应商交叉核验补充](dgdeler_cross_source_verification_2026-10-28.md) 与对应 JSON。

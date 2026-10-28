@@ -268,3 +268,14 @@ streamlit run app.py
 ~~~
 
 详细操作、证据门槛与限制见 [V13 参数证据审核工作流](docs/knowledge-evidence-review-v13.md)。系统不会自动接受参数或确认 SKU 映射；原始资料和 SQLite 数据库应在本地单独备份。
+
+## 供应商资料提取示例
+
+已将 DGDeler 阿里巴巴国际站主页整理为带来源链接的 Markdown 快照和 JSON，并另建跨来源核验补充。它们用于供应商背景检索，不作为具体产品参数或认证的权威证明：
+
+- [供应商主页资料快照](docs/supplier-research/dgdeler_supplier_profile_2026-10-28.md)
+- [结构化供应商资料 JSON](docs/supplier-research/dgdeler_supplier_profile_2026-10-28.json)
+- [供应商交叉核验补充](docs/supplier-research/dgdeler_cross_source_verification_2026-10-28.md)
+- [结构化交叉核验 JSON](docs/supplier-research/dgdeler_cross_source_verification_2026-10-28.json)
+
+导入 V13 时建议将网页摘要标记为 other / unverified；产品级参数需回到具体产品页面、厂家规格书或检测报告核验。
