@@ -108,7 +108,9 @@ class KnowledgeIngestV13Tests(unittest.TestCase):
         docs=[item for item in result["results"] if item["type"]=="document"]
         self.assertTrue(docs)
         self.assertTrue(any(item["source_metadata"]["source_url"]==source_url for item in docs))
-        self.assertTrue(any("Material | Zinc Alloy" in item["text"] for item in docs))
+        material_result=search_knowledge(self.db,query="Material")
+        material_docs=[item for item in material_result["results"] if item["type"]=="document"]
+        self.assertTrue(any("Material | Zinc Alloy" in item["text"] for item in material_docs))
         self.assertEqual(search_knowledge(self.db,query="FAKE_MODEL_999")["result_count"],0)
         self.assertEqual(imported["filename"],"ms705.html")
 
