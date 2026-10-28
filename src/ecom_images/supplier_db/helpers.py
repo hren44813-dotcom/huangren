@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 from ..supplier_catalog_capture import normalize_url
 from ..supplier_capture.listing import MODEL_RE
+from ..supplier_capture.batch import read_batch, belongs_to_batch
 from .schema import _json, _sha, SUPPLIER_NAME, SUPPLIER_URL
 
 def _first(item: dict, *keys: str, default: Any = None) -> Any:
@@ -94,12 +95,13 @@ def _load_json(path: Path) -> dict:
 
 def _load_inputs(capture_dir: Path, snapshot_json: Path | None) -> tuple[dict, list[tuple[Path, dict]], list[dict], list[dict]]:
     """Return merged catalog, valid page checkpoints, detail records and input errors."""
+    batch = read_batch(capture_dir)
     errors: list[dict] = []
     page_records: list[tuple[Path, dict]] = []
     detail_records: list[dict] = []
     catalog_path = capture_dir / "catalog.json"
     snapshot = {}
-    if snapshot_json and snapshot_json.is_file():
+    if batch is None and snapshot_json and snapshot_json.is_file():
         try:
             snapshot = _load_json(snapshot_json)
         except (OSError, json.JSONDecodeError, ValueError) as exc:
@@ -132,7 +134,8 @@ def _load_inputs(capture_dir: Path, snapshot_json: Path | None) -> tuple[dict, l
         for path in sorted(pages_dir.glob("page_*.json")):
             try:
                 record = _load_json(path)
-                page_records.append((path, record))
+                if belongs_to_batch(record, batch):
+                    page_records.append((path, record))
             except (OSError, json.JSONDecodeError, ValueError) as exc:
                 errors.append({"stage": "listing_page", "item_ref": str(path), "error_type": type(exc).__name__, "message": str(exc)})
     details_dir = capture_dir / "details"
@@ -144,7 +147,8 @@ def _load_inputs(capture_dir: Path, snapshot_json: Path | None) -> tuple[dict, l
                 record = _load_json(path)
                 if not record.get("item_id"):
                     raise ValueError("detail JSON missing item_id")
-                detail_records.append(record)
+                if belongs_to_batch(record, batch):
+                    detail_records.append(record)
             except (OSError, json.JSONDecodeError, ValueError) as exc:
                 errors.append({"stage": "detail", "item_ref": str(path), "error_type": type(exc).__name__, "message": str(exc)})
         error_path = details_dir / "capture_errors.json"
@@ -153,7 +157,7 @@ def _load_inputs(capture_dir: Path, snapshot_json: Path | None) -> tuple[dict, l
                 detail_errors = json.loads(error_path.read_text(encoding="utf-8"))
                 if isinstance(detail_errors, list):
                     for error in detail_errors:
-                        if isinstance(error, dict):
+                        if isinstance(error, dict) and belongs_to_batch(error, batch):
                             errors.append({"stage": "detail_capture", **error})
             except (OSError, json.JSONDecodeError) as exc:
                 errors.append({"stage": "detail_capture", "item_ref": str(error_path), "error_type": type(exc).__name__, "message": str(exc)})

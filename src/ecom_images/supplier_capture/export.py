@@ -5,12 +5,14 @@ import json
 from pathlib import Path
 from .listing import DEFAULT_URL, now_iso
 from .audit import build_listing_audit
+from .batch import read_batch, belongs_to_batch
 
 def save_listing_outputs(output: Path) -> dict:
     """Merge page checkpoints and write deduplicated local JSON and CSV exports."""
     pages_dir = output / "pages"
     items_by_url: dict[str, dict] = {}
     page_files = sorted(pages_dir.glob("page_*.json"))
+    batch = read_batch(output)
     source_url = DEFAULT_URL
     valid_page_count = 0
     for path in page_files:
@@ -19,7 +21,7 @@ def save_listing_outputs(output: Path) -> dict:
                 page_data = json.load(stream)
         except (OSError, json.JSONDecodeError):
             continue
-        if not isinstance(page_data, dict):
+        if not isinstance(page_data, dict) or not belongs_to_batch(page_data, batch):
             continue
         valid_page_count += 1
         source_url = page_data.get("source_url") or source_url
@@ -29,6 +31,7 @@ def save_listing_outputs(output: Path) -> dict:
     items = sorted(items_by_url.values(), key=lambda row: (row.get("page_number", 0), row.get("title", "")))
     catalog = {
         "schema_version": "1.0",
+        **({"capture_batch_id": batch["batch_id"], "batch_started_at": batch["started_at"]} if batch else {}),
         "supplier": "Dongguan Dele Hardware Technology Co., Ltd.",
         "source_url": source_url,
         "updated_at": now_iso(),
@@ -62,4 +65,6 @@ def save_listing_outputs(output: Path) -> dict:
         "unique_product_count": len(items),
         "audit_status": audit["status"],
         "missing_page_count": len(audit["missing_page_numbers"]),
+        "capture_batch_id": batch["batch_id"] if batch else None,
+        "stale_page_count": audit["stale_page_count"],
     }

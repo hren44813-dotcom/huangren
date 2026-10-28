@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from .supplier_catalog_capture import normalize_url
+from .supplier_capture.batch import read_batch, belongs_to_batch
 
 _PAGE_RE = re.compile(r"^page_(\d+)\.json$")
 _PAGINATION_RE = re.compile(r"\b(\d+)\s*/\s*(\d+)\b")
@@ -70,6 +71,12 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
     """Independently check actual pages, product coverage, details and optional full-detail gate."""
     root = Path(capture_dir).expanduser().absolute()
     failures: list[str] = []
+    try:
+        batch = read_batch(root)
+    except ValueError:
+        failures.append("invalid_capture_batch_manifest")
+        batch = {"batch_id": "__invalid__"}
+    stale_page_count = 0
     invalid_pages: list[dict] = []
     page_numbers: set[int] = set()
     page_urls: set[str] = set()
@@ -79,6 +86,8 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
     catalog_path = root / "catalog.json"
     try:
         catalog = _read_json(catalog_path)
+        if batch is not None and catalog.get("capture_batch_id") != batch["batch_id"]:
+            failures.append("catalog_capture_batch_mismatch")
         items = catalog.get("items")
         if not isinstance(items, list):
             raise ValueError("catalog.items 不是数组")
@@ -112,6 +121,9 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
         filename_number = int(match.group(1))
         try:
             data = _read_json(path)
+            if not belongs_to_batch(data, batch):
+                stale_page_count += 1
+                continue
             if data.get("page_number") != filename_number:
                 raise ValueError("文件名和 page_number 不一致")
             items = data.get("items")
@@ -164,6 +176,8 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
     for path in detail_files:
         try:
             record = _read_json(path)
+            if not belongs_to_batch(record, batch):
+                continue
             item_id = str(record.get("item_id") or "")
             if not item_id or item_id not in catalog_ids:
                 unmatched_detail_ids.append(item_id or path.name)
@@ -207,7 +221,9 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
             error_rows = json.loads(capture_error_path.read_text(encoding="utf-8"))
             if not isinstance(error_rows, list):
                 raise ValueError("错误记录必须是数组")
-            unresolved_errors = len(error_rows)
+            unresolved_errors = len([row for row in error_rows
+                                     if batch is None or (isinstance(row, dict)
+                                     and row.get("capture_batch_id") == batch["batch_id"])])
         except (ValueError, OSError, json.JSONDecodeError):
             unresolved_errors = 1
         if unresolved_errors:
@@ -218,13 +234,23 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
         "no_page_checkpoints", "invalid_page_checkpoint", "conflicting_pagination_totals",
         "unknown_pagination_total", "missing_listing_pages",
         "catalog_page_product_mismatch", "no_valid_catalog_products",
+        "invalid_capture_batch_manifest", "catalog_capture_batch_mismatch",
     }
     detail_blockers = {
         "invalid_or_orphan_detail", "missing_product_details",
         "unresolved_detail_capture_errors",
     }
     listing_complete = not any(x in listing_blockers for x in failures)
-    detail_requested = require_details or (root / "details_collection_requested.json").exists() or bool(detail_files)
+    marker = root / "details_collection_requested.json"
+    marker_requested = False
+    if marker.is_file():
+        try:
+            marker_data = _read_json(marker)
+            marker_requested = batch is None or marker_data.get("capture_batch_id") == batch["batch_id"]
+        except (ValueError, OSError, json.JSONDecodeError):
+            marker_requested = True
+    detail_requested = require_details or marker_requested or (
+        bool(detail_files) and batch is None) or bool(valid_detail_ids)
     # No product inventory means detail coverage is unknown, not "complete".
     detail_complete = bool(catalog_ids) and not any(x in detail_blockers for x in failures)
     status = "complete" if listing_complete and (not detail_requested or detail_complete) else "partial"
@@ -234,6 +260,8 @@ def inspect_supplier_capture(capture_dir: str | Path, *, require_details: bool =
         "detail_status": ("complete" if detail_complete else "partial") if detail_requested else "not_requested",
         "detail_requested": detail_requested,
         "require_details": require_details,
+        "capture_batch_id": batch["batch_id"] if batch else None,
+        "stale_page_checkpoints": stale_page_count,
         "expected_listing_pages": expected_pages,
         "captured_listing_pages": len(page_numbers),
         "missing_listing_pages": missing_pages,

@@ -4,7 +4,8 @@ param(
     [int]$MaxPages = 139,
     [ValidateRange(0.5, 30.0)]
     [double]$DelaySeconds = 2.5,
-    [switch]$InstallDependencies
+    [switch]$InstallDependencies,
+    [switch]$NewBatch
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,6 +16,7 @@ Set-Location $Root
 $CaptureDir = Join-Path $Root "data/supplier_captures/dgdeler"
 $PagesDir = Join-Path $CaptureDir "pages"
 $CatalogPath = Join-Path $CaptureDir "catalog.json"
+$BatchPath = Join-Path $CaptureDir "listing_batch.json"
 $PageOnePath = Join-Path $PagesDir "page_001.json"
 $SnapshotPath = Join-Path $Root "docs/supplier-research/dgdeler_product_list_page1_2026-10-28.json"
 $DatabasePath = Join-Path $Root ".local/supplier_catalog.sqlite3"
@@ -63,10 +65,14 @@ if (-not (Test-Path $CatalogPath)) {
 
 Write-Host ""
 Write-Host "The capture opens a separate Chromium profile. Log in and complete any site-provided checks in that window; the script will not bypass them." -ForegroundColor Yellow
-$listingCode = Invoke-PythonStep -Label "Capture listing pages" -Arguments @(
+$listingArgs = @(
     "scripts/supplier_catalog_capture.py", "listing",
-    "--max-pages", "$MaxPages", "--delay", "$DelaySeconds", "--refresh-existing"
+    "--max-pages", "$MaxPages", "--delay", "$DelaySeconds"
 )
+if ($NewBatch -or -not (Test-Path $BatchPath)) {
+    $listingArgs += "--refresh-existing"
+}
+$listingCode = Invoke-PythonStep -Label "Capture listing pages" -Arguments $listingArgs
 
 $listingAuditCode = Invoke-PythonStep -Label "Audit listing checkpoints" -Arguments @(
     "scripts/supplier_catalog_capture.py", "audit", "--output", $CaptureDir

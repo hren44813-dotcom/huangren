@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from .listing import now_iso
 from .detail import enrich_detail_payload, render_detail_markdown
+from .batch import read_batch, belongs_to_batch
 
 def build_listing_audit(output: Path) -> dict:
     """Check captured page coverage, pagination consistency, duplicate URLs and invalid checkpoints."""
@@ -14,6 +15,8 @@ def build_listing_audit(output: Path) -> dict:
     page_paths = sorted(pages_dir.glob("page_*.json")) if pages_dir.exists() else []
     page_records = []
     invalid_files = []
+    batch = read_batch(output)
+    stale_page_count = 0
     for path in page_paths:
         match = re.fullmatch(r"page_(\d+)\.json", path.name)
         file_number = int(match.group(1)) if match else None
@@ -21,6 +24,9 @@ def build_listing_audit(output: Path) -> dict:
             data = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(data, dict):
                 raise ValueError("page record must be an object")
+            if not belongs_to_batch(data, batch):
+                stale_page_count += 1
+                continue
             data["_file_page_number"] = file_number
             page_records.append(data)
         except (OSError, json.JSONDecodeError, ValueError) as exc:
@@ -68,6 +74,8 @@ def build_listing_audit(output: Path) -> dict:
     audit = {
         "checked_at": now_iso(),
         "expected_page_count": expected_pages,
+        "capture_batch_id": batch["batch_id"] if batch else None,
+        "stale_page_count": stale_page_count,
         "pagination_total_known": pagination_total_known,
         "pagination_total_conflicting": len(set(totals)) > 1,
         "captured_page_count": len(captured_numbers),
@@ -100,6 +108,7 @@ def write_detail_exports(output: Path) -> dict:
         raise FileNotFoundError(f"未找到商品目录：{catalog_path}；请先运行 listing 子命令。")
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     items = catalog.get("items", [])
+    batch = read_batch(output)
     details_dir = output / "details"
     markdown_dir = output / "details_markdown"
     markdown_dir.mkdir(parents=True, exist_ok=True)
@@ -114,7 +123,8 @@ def write_detail_exports(output: Path) -> dict:
         try:
             value = json.loads(capture_error_path.read_text(encoding="utf-8"))
             if isinstance(value, list):
-                capture_errors = [row for row in value if isinstance(row, dict)]
+                capture_errors = [row for row in value if isinstance(row, dict)
+                                  and (batch is None or row.get("capture_batch_id") == batch["batch_id"])]
             else:
                 invalid_files.append({"file": capture_error_path.name, "error": "capture error log must be a JSON array"})
         except (OSError, json.JSONDecodeError) as exc:
@@ -124,6 +134,8 @@ def write_detail_exports(output: Path) -> dict:
             record = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(record, dict) or not record.get("item_id"):
                 raise ValueError("detail record missing item_id")
+            if not belongs_to_batch(record, batch):
+                continue
             records_by_id[str(record["item_id"])] = (path, record)
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             invalid_files.append({"file": path.name, "error": str(exc)})

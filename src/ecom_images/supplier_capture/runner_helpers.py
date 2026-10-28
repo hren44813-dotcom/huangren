@@ -99,10 +99,11 @@ def click_page_number(page, target: int, old_fingerprint: str) -> bool:
         return False
     try:
         page.wait_for_function(
-            "old => Array.from(document.querySelectorAll('a[href*=\"/product-detail/\"]'))"
-            ".map(a=>a.href).filter(Boolean).slice(0,30).join('|') !== old",
+            "old => {const current = Array.from(document.querySelectorAll('a[href*=\\\"/product-detail/\\\"]'))"
+            ".map(a=>a.href).filter(Boolean).slice(0,30).join('|'); return !!current && current !== old;}",
             arg=old_fingerprint, timeout=20000,
         )
     except Exception:
         page.wait_for_timeout(1800)
-    return product_fingerprint(page) != old_fingerprint
+    current = product_fingerprint(page)
+    return bool(current and current != old_fingerprint)

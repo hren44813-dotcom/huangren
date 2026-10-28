@@ -22,6 +22,8 @@ DEFAULT_OUTPUT = ROOT / "data" / "supplier_captures" / "dgdeler"
 from ecom_images.supplier_capture.runner_helpers import (
     parse_args, launch_browser, wait_for_manual_check, click_page_number,
 )
+from ecom_images.supplier_capture.batch import read_batch, start_batch, reusable_page, reusable_detail
+from ecom_images.supplier_capture_validation import inspect_supplier_capture
 
 def run_listing(args: argparse.Namespace) -> int:
     """Capture listing pages one by one and save a checkpoint after every page."""
@@ -33,6 +35,8 @@ def run_listing(args: argparse.Namespace) -> int:
     output = args.output.resolve()
     pages_dir = output / "pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
+    # Refresh starts a new batch; normal reruns resume only its valid checkpoints.
+    batch = start_batch(output) if args.refresh_existing else read_batch(output)
     interactive = not args.no_prompt and not args.headless
     playwright, context, page = launch_browser(args.profile_dir.resolve(), headless=args.headless)
     try:
@@ -48,10 +52,21 @@ def run_listing(args: argparse.Namespace) -> int:
             wait_for_manual_check(page, f"商品列表第 {number} 页", interactive=interactive)
             fingerprint = product_fingerprint(page)
             checkpoint = pages_dir / f"page_{number:03d}.json"
-            if checkpoint.exists() and not args.refresh_existing:
-                print(f"[{number}/{args.max_pages}] 已有检查点；仍会翻页以保持进度。")
+            saved = None
+            if checkpoint.is_file():
+                try:
+                    saved = json.loads(checkpoint.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    pass
+            if reusable_page(saved, number, batch):
+                print(f"[{number}/{args.max_pages}] 已验证当前批次分页检查点；继续下一页。")
             else:
                 record = scrape_listing_page(page, number, args.url)
+                if batch is not None:
+                    record["capture_batch_id"] = batch["batch_id"]
+                if not reusable_page(record, number, batch):
+                    print(f"[{number}/{args.max_pages}] 页面为空或分页标识不匹配，未写入检查点。")
+                    break
                 checkpoint.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 if args.save_html:
                     (pages_dir / f"page_{number:03d}.html").write_text(page.content(), encoding="utf-8")
@@ -80,13 +95,19 @@ def run_details(args: argparse.Namespace) -> int:
     output_dir = args.output.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "details_collection_requested.json").write_text(
-        json.dumps({"requested_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "requested": True}, ensure_ascii=False, indent=2) + "\n",
+        json.dumps({"requested_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    "requested": True,
+                    "capture_batch_id": read_batch(output_dir)["batch_id"] if read_batch(output_dir) else None},
+                   ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     catalog_path = output_dir / "catalog.json"
     if not catalog_path.exists():
         raise FileNotFoundError(f"未找到目录 {catalog_path}；请先运行 listing 子命令。")
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    batch = read_batch(output_dir)
+    if batch is not None and catalog.get("capture_batch_id") != batch["batch_id"]:
+        raise ValueError("商品目录不是当前采集批次，请先重建")
     items = catalog.get("items", [])
     if args.limit > 0:
         items = items[:args.limit]
@@ -103,7 +124,8 @@ def run_details(args: argparse.Namespace) -> int:
             prior_errors = []
     errors_by_item = {
         str(row.get("item_id") or row.get("item_ref") or ""): row
-        for row in prior_errors if row.get("item_id") or row.get("item_ref")
+        for row in prior_errors if (row.get("item_id") or row.get("item_ref"))
+        and (batch is None or row.get("capture_batch_id") == batch["batch_id"])
     }
     interactive = not args.no_prompt and not args.headless
     playwright, context, page = launch_browser(args.profile_dir.resolve(), headless=args.headless)
@@ -123,8 +145,10 @@ def run_details(args: argparse.Namespace) -> int:
             if path.exists():
                 try:
                     prior = json.loads(path.read_text(encoding="utf-8"))
-                    if isinstance(prior, dict) and isinstance(prior.get("detail_page"), dict) and text_path.exists():
-                        print(f"[{index}/{len(items)}] 跳过已保存详情：{item.get('title', item_id)}")
+                    saved_text = text_path.read_text(encoding="utf-8") if text_path.is_file() else ""
+                    if reusable_detail(prior, item_id=str(item_id), listing_url=item["product_url"],
+                                       text=saved_text, batch=batch):
+                        print(f"[{index}/{len(items)}] 跳过已验证详情：{item.get('title', item_id)}")
                         errors_by_item.pop(str(item_id), None)
                         continue
                     print(f"[{index}/{len(items)}] 详情记录不完整，将重新采集：{item.get('title', item_id)}")
@@ -142,8 +166,11 @@ def run_details(args: argparse.Namespace) -> int:
                     validate_alibaba_url(page.url, require_product=True)
                     detail = page.evaluate(DETAIL_JS)
                     body_text = detail.pop("body_text", "")
+                    if not isinstance(body_text, str) or not body_text.strip():
+                        raise ValueError("详情正文为空，不保存无效检查点")
                     detail["body_text_file"] = f"{item_id}.txt"
                     record = {
+                        **({"capture_batch_id": batch["batch_id"]} if batch else {}),
                         "item_id": item_id,
                         "listing_title": item.get("title"),
                         "listing_url": item.get("product_url"),
@@ -172,6 +199,7 @@ def run_details(args: argparse.Namespace) -> int:
                         "occurred_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                         "error_type": type(exc).__name__, "message": str(exc)[:1000],
                         "challenge_or_access_restriction": challenge,
+                        **({"capture_batch_id": batch["batch_id"]} if batch else {}),
                     }
                     if challenge:
                         print(f"[{index}/{len(items)}] 检测到登录/验证码/访问限制，停止详情采集并保存进度。")
@@ -189,6 +217,11 @@ def run_details(args: argparse.Namespace) -> int:
             if stop_for_challenge:
                 break
             page.wait_for_timeout(max(1.0, args.delay) * 1000)
+        # Persist cleared errors even when every detail was skipped.
+        error_path.write_text(
+            json.dumps(list(errors_by_item.values()), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
         detail_audit = write_detail_exports(args.output.resolve())
         print(json.dumps(detail_audit, ensure_ascii=False, indent=2))
         print(f"详情采集结束。文件目录：{detail_dir}")
@@ -212,8 +245,11 @@ def main(argv: list[str] | None = None) -> int:
             raise FileNotFoundError(f"未找到商品分页检查点：{pages_dir}；请先运行 listing 子命令。")
         listing_summary = save_listing_outputs(output)
         detail_summary = write_detail_exports(output)
-        print(json.dumps({"listing": listing_summary, "details": detail_summary}, ensure_ascii=False, indent=2))
-        return 0 if listing_summary.get("audit_status") == "complete" and detail_summary.get("is_complete") else 2
+        canonical = inspect_supplier_capture(output)
+        print(json.dumps({"listing": listing_summary, "details": detail_summary,
+                          "canonical_validation": canonical, "status": canonical["status"]},
+                         ensure_ascii=False, indent=2))
+        return 0 if canonical["status"] == "complete" else 2
     except KeyboardInterrupt:
         print("\n已中止；已保存的检查点会保留。", file=sys.stderr)
         return 130
