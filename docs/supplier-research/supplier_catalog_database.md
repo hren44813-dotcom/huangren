@@ -29,40 +29,40 @@ Observation, page, option, attribute, error and run-event tables are append-only
 
 Seed a local resume checkpoint from the committed first-page snapshot:
 
-`powershell
+```powershell
 python scripts/seed_supplier_capture.py
-`
+```
 
 For a full visible-browser run on Windows, run the PowerShell orchestrator below. It preserves checkpoints, allows manual login/CAPTCHA handling in the visible browser, retries ordinary page errors, syncs the database, exports CSVs and returns a non-zero exit code if completeness checks fail. To install dependencies first, add -InstallDependencies:
 
-`powershell
+```powershell
 .\scripts\run_full_supplier_capture.ps1 -InstallDependencies
-`
+```
 
 After the one-time install, rerun without the switch. The lower-level commands are also available; refresh existing checkpoints when the goal is to capture new price observations:
 
-`powershell
+```powershell
 python scripts/supplier_catalog_capture.py listing --max-pages 139 --delay 2.5 --refresh-existing
 python scripts/supplier_catalog_capture.py details --delay 3
 python scripts/supplier_catalog_capture.py audit
-`
+```
 
 The capture script supports --headless --no-prompt for automation. If the site returns a CAPTCHA, login wall or access restriction, non-interactive mode stops and keeps the checkpoints; it does not attempt to bypass the check.
 
 Sync captures into the normalized database and export CSVs:
 
-`powershell
+```powershell
 python scripts/sync_supplier_catalog_db.py sync
 python scripts/sync_supplier_catalog_db.py audit
 python scripts/sync_supplier_catalog_db.py search CL226
 python scripts/sync_supplier_catalog_db.py export
-`
+```
 
 For a preview without database writes:
 
-`powershell
+```powershell
 python scripts/sync_supplier_catalog_db.py sync --dry-run
-`
+```
 
 ## GitHub Actions
 
