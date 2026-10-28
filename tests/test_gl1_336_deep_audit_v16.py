@@ -1,8 +1,8 @@
 from __future__ import annotations
-import copy,json,sys,unittest
+import copy,json,sys,unittest,tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/"src"))
-from ecom_images.gl1_336_deep_audit_v16 import validate_evidence, exact_model_occurrences, extract_code_forms
+from ecom_images.gl1_336_deep_audit_v16 import validate_evidence, exact_model_occurrences, extract_code_forms, audit_pdf
 class GL1336DeepAuditV16Tests(unittest.TestCase):
  @classmethod
  def setUpClass(cls): cls.e=json.loads((ROOT/"assets/gl1_336_deep_evidence_v16.json").read_text(encoding="utf-8"))
@@ -34,6 +34,10 @@ class GL1336DeepAuditV16Tests(unittest.TestCase):
   c=self.e["claims"];self.assertEqual(len({x["claim_id"] for x in c}),len(c));self.assertTrue(all(x["pdf_page_1based"]==37 for x in c))
  def test_metadata_unknown_not_guessed(self):
   m=self.e["source"]["pdf_metadata"];self.assertEqual(m["title"],"");self.assertEqual(m["creationDate"],"");self.assertEqual(m["modDate"],"")
+ def test_audit_refuses_wrong_pdf_before_parsing(self):
+  with tempfile.TemporaryDirectory() as temp:
+   root=Path(temp);wrong=root/"not-the-catalog.pdf";wrong.write_bytes(b"not the original PDF")
+   with self.assertRaisesRegex(ValueError,"Source fingerprint mismatch"): audit_pdf(wrong,self.e,root/"output")
  def test_tampered_hash_rejected(self):
   e=copy.deepcopy(self.e);e["source"]["source_integrity"]["sha256"]="bad";r=validate_evidence(e);self.assertFalse(r["ok"]);self.assertTrue(any("SHA-256" in x for x in r["errors"]))
  def test_conflict_cannot_be_closed_without_evidence(self):

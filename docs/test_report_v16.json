@@ -1,7 +1,7 @@
 {
   "version": "16.0",
   "local_unit_tests": {
-    "passed": 20,
+    "passed": 21,
     "failed": 0
   },
   "source_pdf_audit": {
