@@ -291,6 +291,9 @@ streamlit run app.py
 
 ## 供应商商品目录采集与 SQLite 历史数据库
 
+**模块化重构（第二阶段）**：供应商采集和 SQLite 代码已拆分为每文件不超过 300 行的模块；保留原有导入接口、SQL V1 表结构、V13 知识证据库与本地默认路径。详见 [模块拆分与兼容性验收](docs/supplier-research/supplier_module_refactor.md)。
+
+
 - 全量采集操作说明：docs/supplier-research/dgdeler_full_catalog_capture.md
 - SQLite 数据库结构、数据质量和运行流程：docs/supplier-research/supplier_catalog_database.md
 - 本次云端采集受验证码限制的审计报告：docs/supplier-research/collection_run_2026-10-28.md
