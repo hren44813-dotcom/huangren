@@ -27,3 +27,41 @@ jobs:
         run: python -m compileall -q src scripts tests app.py
       - name: Run offline tests (no API credentials)
         run: python -m unittest discover -s tests -v
+
+
+  supplier-pipeline-smoke:
+    name: Supplier pipeline offline smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install base dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Rebuild page-1 checkpoint from committed source
+        run: python scripts/seed_supplier_capture.py
+      - name: Sync first-page snapshot to normalized SQLite
+        run: |
+          python scripts/sync_supplier_catalog_db.py sync --require-details
+          python scripts/sync_supplier_catalog_db.py audit
+      - name: Independently prove missing coverage is reported
+        run: |
+          python scripts/verify_supplier_pipeline.py \
+            --require-details --expect-status partial \
+            --report data/supplier_captures/dgdeler/independent_validation.json
+      - name: Assert first-page-only scope and absent detail coverage
+        run: |
+          python -c "import json,pathlib; p=pathlib.Path('data/supplier_captures/dgdeler/independent_validation.json'); a=json.loads(p.read_text()); assert a['expected_listing_pages']==139; assert a['captured_listing_pages']==1; assert len(a['missing_listing_pages'])==138; assert a['catalog_products']==16; assert a['valid_detail_products']==0; assert a['status']=='partial'"
+      - name: Upload inspectable offline smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supplier-offline-smoke
+          path: |
+            data/supplier_captures/dgdeler/independent_validation.json
+            data/supplier_captures/dgdeler/exports/
+          if-no-files-found: warn
+          retention-days: 7
