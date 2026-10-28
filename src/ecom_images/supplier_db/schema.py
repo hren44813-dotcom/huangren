@@ -17,8 +17,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .supplier_catalog_capture import enrich_detail_payload, normalize_url
-from .supplier_capture_validation import inspect_supplier_capture
 
 SCHEMA_VERSION = 1
 SUPPLIER_NAME = "Dongguan Dele Hardware Technology Co., Ltd."
