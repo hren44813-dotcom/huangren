@@ -71,3 +71,25 @@ jobs:
             data/supplier_captures/dgdeler/exports/
           if-no-files-found: warn
           retention-days: 7
+
+
+  powershell-syntax:
+    name: Windows capture script syntax
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse and validate PowerShell orchestration
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD "scripts/run_full_supplier_capture.ps1"),
+            [ref]$tokens, [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.ToString() }
+            exit 1
+          }
+          Write-Host "PowerShell syntax valid"
