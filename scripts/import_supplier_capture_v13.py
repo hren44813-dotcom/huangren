@@ -18,6 +18,7 @@ from ecom_images.knowledge_schema_v13 import initialize_knowledge  # noqa: E402
 REFERENCE_SNAPSHOTS = (
     ROOT / "docs" / "supplier-research" / "dgdeler_product_list_page1_2026-10-28.md",
     ROOT / "docs" / "supplier-research" / "dgdeler_supplier_profile_2026-10-28.md",
+    ROOT / "docs" / "supplier-research" / "dgdeler_store_category_index_2026-10-28.md",
 )
 
 
@@ -68,6 +69,15 @@ def _source_metadata(path: Path, text: str) -> tuple[str, str, dict[str, str]]:
             "capture_method": "connected_browser_rendered_page_text",
             "raw_html_saved": "false",
             "snapshot_id": "dgdeler_alibaba_product_list_page1_2026-10-28",
+        }
+    elif "dgdeler_store_category_index_" in name:
+        source_kind = "other"
+        family = "DGDeler Alibaba store category index snapshot"
+        metadata = {
+            "page_kind": "store_category_index_snapshot",
+            "capture_method": "connected_browser_rendered_page_text",
+            "raw_html_saved": "false",
+            "snapshot_id": "dgdeler_store_category_index_2026-10-28",
         }
     elif "dgdeler_supplier_profile_" in name:
         source_kind = "other"
