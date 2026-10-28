@@ -293,6 +293,7 @@ streamlit run app.py
 
 - 全量采集操作说明：docs/supplier-research/dgdeler_full_catalog_capture.md
 - SQLite 数据库结构、数据质量和运行流程：docs/supplier-research/supplier_catalog_database.md
+- 本次云端采集受验证码限制的审计报告：docs/supplier-research/collection_run_2026-10-28.md
 - GitHub Actions 全量采集工作流：.github/workflows/supplier-catalog-collection.yml
 
 采集器会保存每页检查点，提取可见规格表、JSON-LD、图片与 SKU 选项；SQLite 会保存商品、每次价格/MOQ/销量观察、详情属性、SKU 选项、采集批次及错误历史。使用 scripts/sync_supplier_catalog_db.py 同步与导出。GitHub Actions 将数据库、CSV、JSON 检查点和审计报告上传为 30 天 artifact，不会把动态数据库二进制直接提交到公开仓库。云端自动采集已验证会遇到 Alibaba 登录/验证码限制；要完成全量数据，请在 Windows PowerShell 中运行 scripts/run_full_supplier_capture.ps1，在打开的可见浏览器里手动完成站点验证，再查看完整性审计。工具不会绕过访问控制。供应商页面字段始终标记为待核验观察值，不会自动变成已接受技术参数。

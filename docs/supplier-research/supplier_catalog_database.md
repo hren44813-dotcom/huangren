@@ -33,13 +33,13 @@ Seed a local resume checkpoint from the committed first-page snapshot:
 python scripts/seed_supplier_capture.py
 ```
 
-For a full visible-browser run on Windows, run the PowerShell orchestrator below. It preserves checkpoints, allows manual login/CAPTCHA handling in the visible browser, retries ordinary page errors, syncs the database, exports CSVs and returns a non-zero exit code if completeness checks fail. To install dependencies first, add -InstallDependencies:
+For a full visible-browser run on Windows, run the PowerShell orchestrator below. It preserves checkpoints, allows manual login/CAPTCHA handling in the visible browser, retries ordinary page errors, syncs the database, exports CSVs and returns a non-zero exit code if completeness checks fail. On the first run, the switch installs dependencies and then immediately starts collection. If dependencies are already installed, omit it. If a run is interrupted, rerun without the switch to resume from saved checkpoints:
 
 ```powershell
 .\scripts\run_full_supplier_capture.ps1 -InstallDependencies
 ```
 
-After the one-time install, rerun without the switch. The lower-level commands are also available; refresh existing checkpoints when the goal is to capture new price observations:
+The switch installs dependencies and immediately starts collection. If dependencies are already installed, omit it; after an interruption, rerun without the switch to resume. The lower-level commands are also available; refresh existing checkpoints when the goal is to capture new price observations:
 
 ```powershell
 python scripts/supplier_catalog_capture.py listing --max-pages 139 --delay 2.5 --refresh-existing
@@ -68,7 +68,7 @@ python scripts/sync_supplier_catalog_db.py sync --dry-run
 
 The Supplier catalog collection workflow supports manual workflow_dispatch after the workflow is present on the default branch. It also runs on relevant code pushes to the feature branch while this PR is being developed. The full default run requests up to 139 listing pages and then visits each captured product detail page; it may take hours and can stop early if the marketplace requires interactive verification.
 
-The workflow uploads the SQLite database, JSON checkpoints, text detail captures, CSV exports and audit reports as a 30-day artifact. It does not commit the generated database or supplier records to Git. If the run is incomplete, the artifact is still uploaded, but the final quality gate fails so a partial crawl cannot be mistaken for a successful full collection.
+The workflow uploads the SQLite database, JSON checkpoints, text detail captures, CSV exports and audit reports as a 30-day artifact. It does not commit the generated database or supplier records to Git. If the run is incomplete, the artifact is still uploaded, but the final quality gate fails so a partial crawl cannot be mistaken for a successful full collection. The first automated attempt on 2026-10-28 was blocked by an Alibaba login/CAPTCHA/access restriction and captured only the existing 16-item first-page checkpoint; see collection_run_2026-10-28.md.
 
 ## Data-quality and evidence rules
 
