@@ -260,7 +260,7 @@ python scripts/knowledge_ingest_v13.py audit
 
 ## V13 参数证据审核工作流
 
-第四阶段已在 Streamlit 中文界面新增「⑦ 参数证据审核」页：按型号/参数检索原始资料，查看 PDF 页码与高亮区域、Markdown/TXT 行号、DOCX 段落/表格及 Excel 单元格；人工填写候选参数后原子创建待复核主张和来源证据，并支持追加复核、查看状态历史及处理未解决冲突。
+第四阶段已在 Streamlit 中文界面新增「⑦ 参数证据审核」页：可直接上传 PDF、DOCX、Markdown、TXT、XLSX/XLSM/XLS 原始资料，也可按型号/参数检索已导入资料；支持 PDF 页码与高亮区域、Markdown/TXT 行号、DOCX 段落/表格及 Excel 单元格定位。人工填写候选参数后原子创建待复核主张和来源证据，并支持追加复核、查看状态历史及处理未解决冲突。
 
 ~~~bash
 python -m pip install -r requirements-ui.txt
