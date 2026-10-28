@@ -35,14 +35,14 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
     def write_pdf(self):
         path=self.inputs/"catalog.pdf"; doc=fitz.open()
         page=doc.new_page(width=595,height=842)
-        page.insert_text((50,70),"型号 GL1-336")
-        page.insert_text((50,105),"额定扭矩 6 N.m")
-        page.insert_text((50,140),"材质 SUS304")
+        page.insert_text((50,70),"Model GL1-336")
+        page.insert_text((50,105),"Rated torque 6 N.m")
+        page.insert_text((50,140),"Material SUS304")
         doc.save(path); doc.close(); return path
     def import_pdf(self):
         return import_document(self.db,file_path=self.write_pdf(),source_kind="manufacturer_document",
             authority_level="manufacturer_controlled",document_family="GL1-336")
-    def segment(self,*,attribute="扭矩",exact_model=True):
+    def segment(self,*,attribute="Torque",exact_model=True):
         query={"model_code":"GL1-336"} if exact_model else {"query":"扭矩"}
         if attribute: query["attribute"]=attribute
         docs=[x for x in search_knowledge(self.db,**query)["results"] if x["type"]=="document"]
@@ -51,13 +51,13 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
     def create_from_pdf(self):
         self.import_pdf(); seg=self.segment()
         result=create_claim_from_segment(self.db,segment_id=seg["segment_id"],model_id=self.model_id,
-            attribute="扭矩",literal_value="6",unit="N.m",claim_kind="catalog_transcription",created_by="运营")
+            attribute="Torque",literal_value="6",unit="N.m",claim_kind="catalog_transcription",created_by="运营")
         return seg,result
     def test_create_claim_and_evidence_atomically_preserves_source_location(self):
         seg,result=self.create_from_pdf()
         self.assertEqual(result["state"],"proposed")
-        self.assertEqual(result["claim_id"],result["claim_id"])
-        detail=get_claim_review_detail(self.db,result["claim_id"])
+        self.assertTrue(result["claim_id"])
+        detail=get_claim_review_detail(self.db,claim_id=result["claim_id"])
         self.assertEqual(detail["claim"]["state"],"proposed")
         self.assertEqual(len(detail["evidence"]),1)
         evidence=detail["evidence"][0]
@@ -65,8 +65,8 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
         self.assertEqual(evidence["pdf_page"],1)
         self.assertEqual(evidence["region"]["segment_id"],seg["segment_id"])
         self.assertEqual(evidence["region"]["bbox"],seg["location"]["region"]["bbox"])
-        self.assertIn("额定扭矩",evidence["literal_excerpt"])
-        self.assertEqual(list_review_claims(self.db,model_code="GL1-336",attribute="扭矩")[0]["claim_id"],result["claim_id"])
+        self.assertIn("Rated torque",evidence["literal_excerpt"])
+        self.assertEqual(list_review_claims(self.db,model_code="GL1-336",attribute="Torque")[0]["claim_id"],result["claim_id"])
     def test_tampered_source_blocks_claim_and_leaves_no_partial_rows(self):
         imported=self.import_pdf(); seg=self.segment()
         stored=self.root/imported["storage_relpath"]; stored.write_bytes(stored.read_bytes()+b"tamper")
