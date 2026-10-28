@@ -164,7 +164,8 @@ class ModelEvidenceReconciliationTests(unittest.TestCase):
             self.db, model_code="GL1-336", required_attributes=["Torque"],
         )
         self.assertFalse(result["allowed"])
-        claim = result["reconciliation"]["models"][0]["claims"][0]
+        report = reconcile_model_evidence(self.db, model_code="GL1-336")
+        claim = report["models"][0]["claims"][0]
         self.assertFalse(
             claim["evidence"][0]["source_bytes_verified"],
             repr({"reasons": result["reasons"], "evidence": claim["evidence"][0]}),
