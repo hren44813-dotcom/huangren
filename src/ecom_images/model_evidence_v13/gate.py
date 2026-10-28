@@ -83,8 +83,8 @@ def evaluate_content_gate(
         "model_code": model["model_code"], "sku_id": sku_id or None,
         "required_attributes": required_attributes, "approved_claims": approved_claims,
         "blocked_attributes": [a for a in required_attributes if re.sub(
-            r"\\s+", " ", unicodedata.normalize("NFKC", a)).strip().casefold()
-            not in {re.sub(r"\\s+", " ", unicodedata.normalize("NFKC", c["attribute"])).strip().casefold()
+            r"\s+", " ", unicodedata.normalize("NFKC", a)).strip().casefold()
+            not in {re.sub(r"\s+", " ", unicodedata.normalize("NFKC", c["attribute"])).strip().casefold()
                     for c in approved_claims}], "reasons": reasons,
         "note": "门禁只批准报告中的具体参数与来源；不要把未列入 approved_claims 的规格或功效补写到商品图文。",
     }
