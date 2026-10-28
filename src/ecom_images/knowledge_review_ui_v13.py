@@ -84,8 +84,8 @@ def _safe_uploaded_filename(value: str) -> str:
     if not basename or basename in {".", ".."}:
         raise ValueError("上传文件名无效")
     suffix = Path(basename).suffix.lower()
-    if suffix not in {".pdf", ".docx", ".md", ".markdown", ".txt", ".xlsx", ".xlsm", ".xls"}:
-        raise ValueError("文件格式不支持；请上传 PDF、DOCX、Markdown、TXT、XLSX、XLSM 或 XLS")
+    if suffix not in {".pdf", ".docx", ".md", ".markdown", ".txt", ".xlsx", ".xlsm", ".xls", ".html", ".htm"}:
+        raise ValueError("文件格式不支持；请上传 PDF、DOCX、Markdown、TXT、XLSX、XLSM、XLS 或 HTML")
     stem = basename[:-len(Path(basename).suffix)] if Path(basename).suffix else basename
     stem = "".join(char if ord(char) >= 32 and char not in {"/", "\\"} else "_" for char in stem).strip()
     if not stem:
@@ -104,7 +104,7 @@ def _render_document_import(st) -> None:
         with st.form("review_document_import_form"):
             uploaded = st.file_uploader(
                 "选择原始资料（单文件，最大 100 MiB）",
-                type=["pdf", "docx", "md", "markdown", "txt", "xlsx", "xlsm", "xls"],
+                type=["pdf", "docx", "md", "markdown", "txt", "xlsx", "xlsm", "xls", "html", "htm"],
                 key="review_import_file",
             )
             kind_label = st.selectbox("资料类型", [value for key, value in _SOURCE_KINDS.items() if key != "physical_photo"], key="review_import_kind")
@@ -179,6 +179,11 @@ def _render_document_result(st, item: dict[str, Any], model_options: list[str],
             f"来源等级：{_AUTHORITY.get(item.get('authority_level', ''), item.get('authority_level', '未知'))}"
         )
         st.caption(f"来源 ID：{item['source_id']} · SHA-256：{item['source_sha256']}")
+        source_metadata = item.get("source_metadata") or {}
+        if source_metadata.get("source_url"):
+            st.markdown(f"**原始网页：** [{source_metadata['source_url']}]({source_metadata['source_url']})")
+        if source_metadata.get("page_kind"):
+            st.caption(f"网页类型：{source_metadata['page_kind']} · 采集方式：{source_metadata.get('capture_method', '文件导入')}")
         st.caption(f"片段类型：{item['segment_type']} · 片段 ID：{segment_id}")
         st.code(item.get("text", ""), language=None)
         st.write("**原始位置**")
