@@ -171,7 +171,13 @@ def run_details(args: argparse.Namespace) -> int:
         raise ValueError("--delay cannot be negative")
     if args.retries < 0 or args.retries > 5:
         raise ValueError("--retries must be between 0 and 5")
-    catalog_path = args.output.resolve() / "catalog.json"
+    output_dir = args.output.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "details_collection_requested.json").write_text(
+        json.dumps({"requested_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "requested": True}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    catalog_path = output_dir / "catalog.json"
     if not catalog_path.exists():
         raise FileNotFoundError(f"未找到目录 {catalog_path}；请先运行 listing 子命令。")
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))

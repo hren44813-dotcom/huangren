@@ -185,5 +185,42 @@ class SupplierCatalogDatabaseTests(unittest.TestCase):
         self.assertFalse(self.db.exists())
 
 
+    def test_listing_only_run_can_be_complete_without_detail_collection(self):
+        """A listing-only workflow must not be failed by an intentionally skipped detail stage."""
+        pages = self.capture / "pages"
+        pages.mkdir()
+        item = self.item()
+        (pages / "page_001.json").write_text(json.dumps({
+            "page_number": 1, "source_url": "https://dgdeler.en.alibaba.com/productlist.html",
+            "page_url": "https://dgdeler.en.alibaba.com/productlist.html",
+            "captured_at": "2026-10-28", "pagination_text": "1/1",
+            "items": [{
+                "title": item["title"], "product_url": "https://www.alibaba.com/product-detail/CL226_1601801131375.html",
+                "price_text": item["price_text"], "price_min": 3.46, "price_max": 4.98,
+                "price_currency": "CNY", "moq_quantity": 1, "moq_unit": "piece",
+                "sales_count_displayed": 11, "sales_status": "displayed", "model_hints": ["CL226"],
+                "captured_at": "2026-10-28",
+            }],
+        }), encoding="utf-8")
+        self.write_snapshot([item])
+        (self.capture / "catalog_audit.json").write_text(json.dumps({"status": "complete"}), encoding="utf-8")
+        (self.capture / "details_audit.json").write_text(json.dumps({"status": "partial"}), encoding="utf-8")
+        summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=self.snapshot)
+        self.assertEqual(summary["status"], "complete")
+        self.assertFalse(summary["detail_collection_requested"])
+        self.assertEqual(summary["detail_audit_status"], "not_requested")
+
+    def test_requested_but_incomplete_detail_collection_makes_run_partial(self):
+        """An explicit marker prevents a failed detail stage from being treated as skipped."""
+        self.write_snapshot()
+        (self.capture / "catalog_audit.json").write_text(json.dumps({"status": "complete"}), encoding="utf-8")
+        (self.capture / "details_audit.json").write_text(json.dumps({"status": "partial"}), encoding="utf-8")
+        (self.capture / "details_collection_requested.json").write_text(json.dumps({"requested": True}), encoding="utf-8")
+        summary = sync_supplier_catalog(self.db, capture_dir=self.capture, snapshot_json=self.snapshot)
+        self.assertEqual(summary["status"], "partial")
+        self.assertTrue(summary["detail_collection_requested"])
+        self.assertEqual(summary["detail_audit_status"], "partial")
+
+
 if __name__ == "__main__":
     unittest.main()

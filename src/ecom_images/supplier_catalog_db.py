@@ -662,9 +662,16 @@ def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
             detail_audit_path = capture / "details_audit.json"
             listing_audit = _load_json(audit_path) if audit_path.is_file() else {}
             detail_audit = _load_json(detail_audit_path) if detail_audit_path.is_file() else {}
+            details_dir = capture / "details"
+            detail_requested = (
+                (capture / "details_collection_requested.json").is_file()
+                or bool(details)
+                or (details_dir / "capture_errors.json").is_file()
+            )
+            detail_audit_status = detail_audit.get("status", "not_available") if detail_requested else "not_requested"
             status = "complete" if (
                 listing_audit.get("status") == "complete"
-                and (not detail_audit or detail_audit.get("status") == "complete")
+                and (not detail_requested or detail_audit.get("status") == "complete")
                 and not errors and not detail_missing_body
             ) else "partial"
             summary.update({
@@ -672,7 +679,8 @@ def sync_supplier_catalog(path: str | Path = DEFAULT_DB, *,
                 "products_seen": len(items), "observations_inserted": inserted_observations,
                 "observations_unchanged": unchanged_observations, "details_inserted": detail_inserted,
                 "listing_audit_status": listing_audit.get("status", "not_available"),
-                "detail_audit_status": detail_audit.get("status", "not_available"),
+                "detail_audit_status": detail_audit_status,
+                "detail_collection_requested": detail_requested,
                 "detail_missing_body_count": len(detail_missing_body),
                 "errors": len(errors), "created_utc": now,
             })
