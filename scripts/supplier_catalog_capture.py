@@ -33,6 +33,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     listing.add_argument("--save-html", action="store_true", help="Save page HTML locally for audit.")
     listing.add_argument("--headless", action="store_true", help="Run Chromium without a visible window; no manual CAPTCHA solving is possible.")
     listing.add_argument("--no-prompt", action="store_true", help="Do not wait for terminal input; abort if a human check is required.")
+    listing.add_argument("--refresh-existing", action="store_true", help="Recapture existing checkpoints while traversing pages, useful for price-history snapshots.")
     details = sub.add_parser("details", help="Visit captured product links and save visible detail text.")
     details.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     details.add_argument("--profile-dir", type=Path, default=ROOT / ".local-browser-profile" / "alibaba")
@@ -141,7 +142,7 @@ def run_listing(args: argparse.Namespace) -> int:
             wait_for_manual_check(page, f"商品列表第 {number} 页", interactive=interactive)
             fingerprint = product_fingerprint(page)
             checkpoint = pages_dir / f"page_{number:03d}.json"
-            if checkpoint.exists():
+            if checkpoint.exists() and not args.refresh_existing:
                 print(f"[{number}/{args.max_pages}] 已有检查点；仍会翻页以保持进度。")
             else:
                 record = scrape_listing_page(page, number, args.url)
