@@ -16,6 +16,8 @@ from .normalize import (
     _evidence_ready, normalize_model_code,
 )
 
+_MAX_SOURCE_SCAN = 10000
+
 def _read_source_mentions(conn, model_code: str, limit: int) -> tuple[list[dict[str, Any]], int, int, bool]:
     code = normalize_model_code(model_code)
     compact_code = re.sub(r"[^A-Z0-9]", "", code)
