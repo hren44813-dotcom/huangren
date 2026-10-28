@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 from .database_v9 import DEFAULT_DB
-from .model_evidence_reconciliation_v13 import evaluate_content_gate
 
 _FIELD_INDEX = re.compile(r"^(selling_points|specs)\[(\d+)\](?:\.value)?$")
 _SPEC_VALUE = re.compile(r"^specs\[(\d+)\]\.value$")
@@ -72,6 +71,7 @@ def _field_text(job: dict[str, Any], field: str) -> str:
 def verify_job_evidence_gate(job: dict[str, Any], base: Path) -> dict[str, Any] | None:
     """Verify explicit text-to-claim bindings before a deterministic image is written."""
     config = job.get("evidence_gate")
+    from .model_evidence_reconciliation_v13 import evaluate_content_gate
     if config is None:
         return None
     if not isinstance(config, dict):
