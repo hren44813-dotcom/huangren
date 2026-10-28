@@ -1,6 +1,7 @@
 """Transactional supplier observation write helpers."""
 from __future__ import annotations
 import sqlite3
+import re
 from pathlib import Path
 from ..supplier_catalog_capture import enrich_detail_payload, normalize_url
 from .schema import _now, _id, _json, _sha
