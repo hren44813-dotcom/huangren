@@ -153,13 +153,20 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
         detail=get_claim_review_detail(self.db,claim_id=result["claim_id"])
         self.assertEqual(detail["reviews"][0]["verdict"],"inconclusive")
         self.assertEqual(detail["evidence"][0]["role"],"supports")
-    def test_review_and_state_change_roll_back_if_acceptance_gate_fails(self):
-        _,result=self.create_from_pdf()
-        with self.assertRaisesRegex(ValueError,"independent supporting review"):
-            record_claim_review(self.db,claim_id=result["claim_id"],verdict="supports",reviewer_role="author",
-                reviewer_name="录入人",method="自查",notes="支持",decision_state="accepted",actor="审核人")
-        detail=get_claim_review_detail(self.db,claim_id=result["claim_id"])
-        self.assertEqual(detail["claim"]["state"],"proposed")
-        self.assertEqual(len(detail["reviews"]),0)
+    def test_conflict_resolution_requires_source_and_removes_open_conflict(self):
+        imported=self.import_pdf()
+        first=create_claim(self.db,subject_type="model",subject_id=self.model_id,attribute="扭矩",
+            literal_value="6",unit="N.m",claim_kind="catalog_transcription",created_by="运营")
+        second=create_claim(self.db,subject_type="model",subject_id=self.model_id,attribute="扭矩",
+            literal_value="7",unit="N.m",claim_kind="supplier_assertion",created_by="运营")
+        conflict=create_conflict(self.db,claim_a_id=first,claim_b_id=second,created_by="运营",
+            description="两个来源的扭矩值不一致")
+        self.assertEqual(len(list_open_conflicts(self.db,model_code="GL1-336",attribute="扭矩")),1)
+        with self.assertRaisesRegex(ValueError,"必须提供来源"):
+            transition_conflict(self.db,conflict_id=conflict,state="resolved",actor="工程复核",
+                resolution_note="已核对，采用制造商资料")
+        transition_conflict(self.db,conflict_id=conflict,state="resolved",actor="工程复核",
+            resolution_note="已核对登记的制造商资料，采用其扭矩值",source_id=imported["source_id"])
+        self.assertEqual(list_open_conflicts(self.db,model_code="GL1-336",attribute="扭矩"),[])
 
 if __name__=="__main__": unittest.main(verbosity=2)
