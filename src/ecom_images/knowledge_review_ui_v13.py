@@ -175,10 +175,23 @@ def _render_document_result(st, item: dict[str, Any], model_options: list[str],
 def _render_claim_review(st, claim: dict[str, Any]) -> None:
     claim_id = claim["claim_id"]
     state = claim["state"]
-    st.markdown(f"**{claim['model_code'] or claim['subject_type']} · {claim['attribute']}：{claim['literal_value']} {claim['unit']}**")
+    identity = claim["model_code"]
+    if not identity and claim.get("sku_model_text"):
+        identity = f"SKU 自由文本 {claim['sku_model_text']}（未确认制造商型号）"
+    elif not identity:
+        identity = claim["subject_type"]
+    binding_labels = {
+        "manufacturer_model": "制造商型号档案",
+        "confirmed_sku_model_mapping": "已确认 SKU 映射",
+        "sku_free_text_unverified": "SKU 自由文本，型号未确认",
+        "no_model_text": "SKU 未填写型号",
+        "not_applicable": "非型号对象",
+    }
+    binding = binding_labels.get(claim.get("model_binding_status", "not_applicable"), "型号身份待核对")
+    st.markdown(f"**{identity} · {claim['attribute']}：{claim['literal_value']} {claim['unit']}**")
     st.caption(
-        f"状态：{state} · 证据 {claim['evidence_count']} 条 · 复核 {claim['review_count']} 条 · "
-        f"主张 ID：{claim_id}"
+        f"状态：{state} · 型号身份：{binding} · 证据 {claim['evidence_count']} 条 · "
+        f"复核 {claim['review_count']} 条 · 主张 ID：{claim_id}"
     )
     detail = get_claim_review_detail(DEFAULT_DB, claim_id=claim_id)
     with st.expander("查看证据、复核和状态历史", expanded=False):
