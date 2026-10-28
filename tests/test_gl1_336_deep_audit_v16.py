@@ -38,4 +38,8 @@ class GL1336DeepAuditV16Tests(unittest.TestCase):
   e=copy.deepcopy(self.e);e["source"]["source_integrity"]["sha256"]="bad";r=validate_evidence(e);self.assertFalse(r["ok"]);self.assertTrue(any("SHA-256" in x for x in r["errors"]))
  def test_conflict_cannot_be_closed_without_evidence(self):
   e=copy.deepcopy(self.e);next(x for x in e["conflicts"] if x["conflict_id"]=="CON-001")["status"]="RESOLVED";r=validate_evidence(e);self.assertFalse(r["ok"]);self.assertTrue(any("CON-001" in x for x in r["errors"]))
+ def test_exact_model_token_boundary(self):
+  self.assertEqual(exact_model_occurrences("GL1-336 GL1-336-A XGL1-336"),["GL1-336"])
+ def test_code_extractor_preserves_letter_o_vs_zero(self):
+  self.assertEqual(extract_code_forms("HC01-03599 HCO1-03600 HC01-03600"),["HC01-03599","HC01-03600","HCO1-03600"])
 if __name__=="__main__": unittest.main(verbosity=2)
