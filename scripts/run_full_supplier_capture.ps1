@@ -8,6 +8,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $false
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $Root
 
@@ -26,7 +27,7 @@ function Invoke-PythonStep {
     )
     Write-Host ""
     Write-Host "===== $Label =====" -ForegroundColor Cyan
-    & python @Arguments
+    & python @Arguments 2>&1 | Out-Host
     $code = $LASTEXITCODE
     Write-Host "Exit code: $code"
     return $code
