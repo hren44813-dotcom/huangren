@@ -732,12 +732,19 @@ def save_listing_outputs(output: Path) -> dict:
     items_by_url: dict[str, dict] = {}
     page_files = sorted(pages_dir.glob("page_*.json"))
     source_url = DEFAULT_URL
+    valid_page_count = 0
     for path in page_files:
-        with path.open(encoding="utf-8") as stream:
-            page_data = json.load(stream)
+        try:
+            with path.open(encoding="utf-8") as stream:
+                page_data = json.load(stream)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(page_data, dict):
+            continue
+        valid_page_count += 1
         source_url = page_data.get("source_url") or source_url
         for item in page_data.get("items", []):
-            if item.get("product_url"):
+            if isinstance(item, dict) and item.get("product_url"):
                 items_by_url[item["product_url"]] = item
     items = sorted(items_by_url.values(), key=lambda row: (row.get("page_number", 0), row.get("title", "")))
     catalog = {
@@ -745,7 +752,7 @@ def save_listing_outputs(output: Path) -> dict:
         "supplier": "Dongguan Dele Hardware Technology Co., Ltd.",
         "source_url": source_url,
         "updated_at": now_iso(),
-        "captured_page_count": len(page_files),
+        "captured_page_count": valid_page_count,
         "unique_product_count": len(items),
         "items": items,
         "limitations": [
@@ -771,7 +778,7 @@ def save_listing_outputs(output: Path) -> dict:
             writer.writerow(row)
     audit = build_listing_audit(output)
     return {
-        "captured_page_count": len(page_files),
+        "captured_page_count": valid_page_count,
         "unique_product_count": len(items),
         "audit_status": audit["status"],
         "missing_page_count": len(audit["missing_page_numbers"]),

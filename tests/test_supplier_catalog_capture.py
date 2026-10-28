@@ -220,5 +220,24 @@ class SupplierCatalogCaptureTests(unittest.TestCase):
             self.assertFalse(audit["is_complete"])
 
 
+    def test_catalog_export_survives_corrupt_checkpoint_and_audits_it(self):
+        """A corrupt checkpoint is reported instead of crashing the whole audit export."""
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+            pages = output / "pages"
+            pages.mkdir()
+            (pages / "page_001.json").write_text(json.dumps({
+                "page_number": 1, "pagination_text": "1/2",
+                "items": [{"product_url": "https://example.com/item-1", "title": "Item 1"}],
+            }), encoding="utf-8")
+            (pages / "page_002.json").write_text("{broken json", encoding="utf-8")
+            summary = save_listing_outputs(output)
+            self.assertEqual(summary["captured_page_count"], 1)
+            audit = json.loads((output / "catalog_audit.json").read_text(encoding="utf-8"))
+            self.assertEqual(audit["status"], "partial")
+            self.assertEqual(audit["missing_page_numbers"], [2])
+            self.assertEqual(audit["invalid_page_files"][0]["file"], "page_002.json")
+
+
 if __name__ == "__main__":
     unittest.main()
