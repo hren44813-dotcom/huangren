@@ -50,6 +50,22 @@ class SupplierRefactorCompatibilityTests(unittest.TestCase):
                 }
                 self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 1)
                 self.assertIn("supplier_catalog_observations_no_update", original_schema)
+                conn.execute(
+                    """INSERT INTO supplier_catalog_suppliers
+                    (id, platform, name, storefront_url, created_utc, updated_utc)
+                    VALUES (?, ?, ?, ?, ?, ?)""",
+                    ("historical-supplier", "Alibaba.com", "Existing Supplier",
+                     "https://existing.alibaba.com", "2026-10-01", "2026-10-01"),
+                )
+                conn.execute(
+                    """INSERT INTO supplier_catalog_products
+                    (id, supplier_id, product_url, title, first_seen_utc, last_seen_utc)
+                    VALUES (?, ?, ?, ?, ?, ?)""",
+                    ("historical-product", "historical-supplier",
+                     "https://www.alibaba.com/product-detail/Existing_123.html",
+                     "Original historical product", "2026-10-01", "2026-10-01"),
+                )
+                conn.commit()
                 self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(), [])
                 self.assertEqual(conn.execute(
                     "SELECT value FROM supplier_catalog_meta WHERE key='schema_version'"
@@ -64,6 +80,10 @@ class SupplierRefactorCompatibilityTests(unittest.TestCase):
                     )
                 }
                 self.assertEqual(original_schema, after)
+                self.assertEqual(conn.execute(
+                    "SELECT title FROM supplier_catalog_products WHERE id=?",
+                    ("historical-product",),
+                ).fetchone()[0], "Original historical product")
                 self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 1)
                 self.assertEqual(conn.execute("PRAGMA integrity_check").fetchone()[0], "ok")
 
