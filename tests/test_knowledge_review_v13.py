@@ -146,6 +146,16 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
         self.assertEqual({conflicts[0]["claim_a"]["literal_value"],conflicts[0]["claim_b"]["literal_value"]},{"6","7"})
         self.assertEqual(list_open_conflicts(self.db,model_code="GL1-336",attribute="材质"),[])
         self.assertEqual(list_review_sources(self.db)[0]["source_id"],imported["source_id"])
+    def test_review_queue_keeps_unconfirmed_sku_model_text_separate(self):
+        with open_database(self.db) as conn:
+            sku_id=conn.execute("SELECT id FROM catalog_skus WHERE code='SKU-1'").fetchone()[0]
+        create_claim(self.db,subject_type="sku",subject_id=sku_id,attribute="扭矩",literal_value="6",
+            unit="N.m",claim_kind="catalog_transcription",created_by="运营")
+        row=list_review_claims(self.db,model_code="GL1-336",attribute="扭矩")[0]
+        self.assertEqual(row["model_code"],"")
+        self.assertEqual(row["sku_model_text"],"GL1-336")
+        self.assertEqual(row["model_binding_status"],"sku_free_text_unverified")
+
     def test_review_detail_includes_review_history_and_evidence(self):
         _,result=self.create_from_pdf()
         record_claim_review(self.db,claim_id=result["claim_id"],verdict="inconclusive",reviewer_role="other",
