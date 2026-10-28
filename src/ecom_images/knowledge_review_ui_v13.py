@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from .database_v9 import DEFAULT_DB
 from .knowledge_schema_v13 import initialize_knowledge
-from .knowledge_ingest_v13 import initialize_ingestion, knowledge_document_summary, search_knowledge, search_models
+from .knowledge_ingest_v13 import MAX_SOURCE_BYTES, import_document, initialize_ingestion, knowledge_document_summary, search_knowledge, search_models
 from .knowledge_v13 import add_model
 from .knowledge_claims_v13 import transition_conflict
 from .knowledge_review_v13 import (
@@ -77,6 +78,77 @@ def _model_options(model_code: str) -> tuple[list[str], dict[str, dict[str, Any]
     return options, details
 
 
+def _safe_uploaded_filename(value: str) -> str:
+    if not isinstance(value, str) or len(value) > 1024:
+        raise ValueError("上传文件名无效")
+    basename = value.replace("\\", "/").split("/")[-1].strip()
+    if not basename or basename in {".", ".."}:
+        raise ValueError("上传文件名无效")
+    suffix = Path(basename).suffix.lower()
+    if suffix not in {".pdf", ".docx", ".md", ".markdown", ".txt", ".xlsx", ".xlsm", ".xls"}:
+        raise ValueError("文件格式不支持；请上传 PDF、DOCX、Markdown、TXT、XLSX、XLSM 或 XLS")
+    stem = basename[:-len(Path(basename).suffix)] if Path(basename).suffix else basename
+    stem = "".join(char if ord(char) >= 32 and char not in {"/", "\\"} else "_" for char in stem).strip()
+    if not stem:
+        stem = "imported-document"
+    stem = stem[:255 - len(suffix)]
+    return stem + suffix
+
+
+def _flash(st, level: str, message: str) -> None:
+    st.session_state["review_flash"] = (level, message)
+    st.rerun()
+
+
+def _render_document_import(st) -> None:
+    with st.expander("导入原始资料", expanded=False):
+        with st.form("review_document_import_form"):
+            uploaded = st.file_uploader(
+                "选择原始资料（单文件，最大 100 MiB）",
+                type=["pdf", "docx", "md", "markdown", "txt", "xlsx", "xlsm", "xls"],
+                key="review_import_file",
+            )
+            kind_label = st.selectbox("资料类型", list(_SOURCE_KINDS.values()), key="review_import_kind")
+            authority_label = st.selectbox(
+                "来源等级", list(_AUTHORITY.values()), index=1, key="review_import_authority"
+            )
+            family = st.text_input("文档系列（可选）", max_chars=200, key="review_import_family")
+            document_number = st.text_input("文件编号（可选）", max_chars=200, key="review_import_number")
+            revision = st.text_input("修订版（可选）", max_chars=100, key="review_import_revision")
+            issue_date = st.text_input("发布日期 YYYY-MM-DD（可选）", max_chars=40, key="review_import_date")
+            submitted = st.form_submit_button("导入并建立检索索引")
+        if not submitted:
+            return
+        if uploaded is None:
+            st.error("请先选择要导入的原始资料。")
+            return
+        raw = uploaded.getvalue()
+        if not raw:
+            st.error("上传文件为空。")
+            return
+        if len(raw) > MAX_SOURCE_BYTES:
+            st.error(f"文件超过大小限制（{MAX_SOURCE_BYTES} 字节）。")
+            return
+        try:
+            safe_name = _safe_uploaded_filename(uploaded.name)
+            kind = next(key for key, value in _SOURCE_KINDS.items() if value == kind_label)
+            authority = next(key for key, value in _AUTHORITY.items() if value == authority_label)
+            with tempfile.TemporaryDirectory(prefix="huangren-review-") as temporary_directory:
+                temporary_path = Path(temporary_directory) / safe_name
+                temporary_path.write_bytes(raw)
+                result = import_document(
+                    DEFAULT_DB, file_path=temporary_path, source_kind=kind, authority_level=authority,
+                    document_family=family, document_number=document_number,
+                    revision_label=revision, issue_date=issue_date,
+                )
+            st.session_state.pop("review_search_result", None)
+            _flash(st, "success",
+                   f"已导入 {result['filename']}，索引片段 {result['segment_count']} 条。"
+                   "原始资料已保存在本机；导入不会自动生成或接受参数主张。")
+        except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
+            st.error(f"原始资料导入失败：{exc}")
+
+
 def _render_model_registration(st, model_code: str) -> None:
     if not model_code.strip():
         return
@@ -91,9 +163,8 @@ def _render_model_registration(st, model_code: str) -> None:
         try:
             ident = add_model(DEFAULT_DB, model_code=code, manufacturer_name=manufacturer,
                               category=category, series=series)
-            st.success(f"制造商型号档案已登记：{code}。未自动关联任何 SKU。")
             st.session_state["review_registered_model_id"] = ident
-            st.rerun()
+            _flash(st, "success", f"制造商型号档案已登记：{code}。未自动关联任何 SKU。")
         except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
             st.error(f"型号登记失败：{exc}")
 
@@ -165,9 +236,8 @@ def _render_document_result(st, item: dict[str, Any], model_options: list[str],
                     attribute=claim_attribute, literal_value=literal_value, unit=unit,
                     claim_kind=kind, created_by=author, evidence_role="supports",
                 )
-                st.success(f"已创建待复核主张 {result['claim_id']}，并原子挂接来源证据。当前状态：待复核。")
-                st.caption("此操作不会接受参数，也不会自动建立 SKU 与制造商型号映射。")
-                st.rerun()
+                _flash(st, "success",
+                       f"已创建待复核主张 {result['claim_id']}，并原子挂接来源证据。当前状态：待复核。")
             except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
                 st.error(f"候选主张创建失败：{exc}")
 
@@ -245,8 +315,7 @@ def _render_claim_review(st, claim: dict[str, Any]) -> None:
                 decision_state=decision_map[decision_label], actor=reviewer,
                 decision_note=decision_note,
             )
-            st.success(f"复核已追加；主张当前状态：{result['state']}。")
-            st.rerun()
+            _flash(st, "success", f"复核已追加；主张当前状态：{result['state']}。")
         except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
             st.error(f"复核未提交：{exc}")
             st.caption("如果接受门槛未通过，复核和状态事件会一并回滚，不会留下半提交记录。")
@@ -307,8 +376,7 @@ def _render_conflicts(st, model_code: str, attribute: str) -> None:
                 try:
                     transition_conflict(DEFAULT_DB, conflict_id=conflict["conflict_id"], state="resolved",
                                         actor=actor, resolution_note=note, source_id=source_id)
-                    st.success("冲突处理已追加；原冲突及历史状态不会被覆盖。")
-                    st.rerun()
+                    _flash(st, "success", "冲突处理已追加；原冲突及历史状态不会被覆盖。")
                 except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
                     st.error(f"冲突处理未提交：{exc}")
 
@@ -330,6 +398,9 @@ def render(st) -> None:
             st.success("V13 知识库与文档索引结构检查完成；既有数据不会被清空。")
         except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
             st.error(f"初始化未完成：{exc}")
+    flash = st.session_state.pop("review_flash", None)
+    if flash:
+        getattr(st, flash[0])(flash[1])
     try:
         summary = knowledge_document_summary(DEFAULT_DB)
         a, b, c, d = st.columns(4)
@@ -341,6 +412,8 @@ def render(st) -> None:
         st.warning(f"文档索引尚不可用：{exc}")
         st.info("如果 V13 已初始化，请点击上方按钮检查/初始化文档索引；如果商品档案尚未初始化，请先前往“商品 / SKU 档案”页。")
         return
+
+    _render_document_import(st)
 
     with st.form("review_search_form"):
         model_col, attribute_col = st.columns(2)
