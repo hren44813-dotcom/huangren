@@ -25,6 +25,11 @@ class SupplierRefactorCompatibilityTests(unittest.TestCase):
 
     def test_legacy_import_paths_are_stable(self):
         """Existing scripts and tests continue to invoke the exact same implementation."""
+        self.assertEqual(legacy_db.DEFAULT_DB, ROOT / ".local" / "supplier_catalog.sqlite3")
+        self.assertEqual(
+            legacy_db.DEFAULT_SNAPSHOT,
+            ROOT / "docs/supplier-research/dgdeler_product_list_page1_2026-10-28.json",
+        )
         self.assertIs(legacy_db.initialize_supplier_db, schema.initialize_supplier_db)
         self.assertIs(legacy_db.sync_supplier_catalog, service.sync_supplier_catalog)
         self.assertIs(legacy_db.audit_supplier_db, reports.audit_supplier_db)
