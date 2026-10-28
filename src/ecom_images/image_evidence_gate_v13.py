@@ -19,7 +19,7 @@ def _norm_text(value: str) -> str:
     text = unicodedata.normalize("NFKC", value).replace("·", ".").replace("⋅", ".")
     text = text.replace("–", "-").replace("—", "-").replace("−", "-")
     text = re.sub(r"\s*([./_\-])\s*", r"\1", text)
-    return re.sub(r"\s+", "", text).casefold()
+    return re.sub(r"\s+", " ", text).strip().casefold()
 
 
 def _contains_value(field_text: str, value: str, unit: str) -> bool:
@@ -44,8 +44,9 @@ def _contains_value(field_text: str, value: str, unit: str) -> bool:
         value_found = re.search(pattern, haystack) is not None
     if not value_found:
         return False
-    unit_key = _norm_text(unit)
-    return not unit_key or unit_key in haystack
+    unit_key = re.sub(r"\s+", "", _norm_text(unit))
+    compact_haystack = re.sub(r"\s+", "", haystack)
+    return not unit_key or unit_key in compact_haystack
 
 
 def _field_text(job: dict[str, Any], field: str) -> str:
