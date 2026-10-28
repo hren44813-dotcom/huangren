@@ -601,9 +601,22 @@ def write_detail_exports(output: Path) -> dict:
     details_dir = output / "details"
     markdown_dir = output / "details_markdown"
     markdown_dir.mkdir(parents=True, exist_ok=True)
-    detail_files = sorted(details_dir.glob("*.json")) if details_dir.exists() else []
+    detail_files = sorted(
+        path for path in details_dir.glob("*.json") if path.name != "capture_errors.json"
+    ) if details_dir.exists() else []
     records_by_id = {}
     invalid_files = []
+    capture_errors = []
+    capture_error_path = details_dir / "capture_errors.json"
+    if capture_error_path.is_file():
+        try:
+            value = json.loads(capture_error_path.read_text(encoding="utf-8"))
+            if isinstance(value, list):
+                capture_errors = [row for row in value if isinstance(row, dict)]
+            else:
+                invalid_files.append({"file": capture_error_path.name, "error": "capture error log must be a JSON array"})
+        except (OSError, json.JSONDecodeError) as exc:
+            invalid_files.append({"file": capture_error_path.name, "error": str(exc)})
     for path in detail_files:
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
@@ -710,11 +723,13 @@ def write_detail_exports(output: Path) -> dict:
         "missing_item_ids": missing_ids,
         "orphan_detail_item_ids": orphan_ids,
         "invalid_detail_files": invalid_files,
+        "capture_error_count": len(capture_errors),
+        "capture_errors": capture_errors,
         "missing_body_text_item_ids": text_missing,
         "markdown_documents_written": len(index_rows),
         "attribute_rows_written": len(attribute_rows),
-        "is_complete": bool(items) and not missing_ids and not orphan_ids and not invalid_files and not text_missing,
-        "status": "complete" if items and not missing_ids and not orphan_ids and not invalid_files and not text_missing else (
+        "is_complete": bool(items) and not missing_ids and not orphan_ids and not invalid_files and not text_missing and not capture_errors,
+        "status": "complete" if items and not missing_ids and not orphan_ids and not invalid_files and not text_missing and not capture_errors else (
             "partial" if index_rows or items else "not_started"
         ),
         "limitations": [
