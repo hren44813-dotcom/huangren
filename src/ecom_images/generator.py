@@ -9,7 +9,6 @@ from typing import Any
 
 from PIL import Image, ImageColor, ImageDraw, ImageFont, ImageOps
 
-from .image_evidence_gate_v13 import verify_job_evidence_gate
 
 SIZES = {
     "search_white": (1440, 1440),
@@ -256,6 +255,7 @@ def build_job(job: dict[str, Any], base: Path) -> dict[str, Any]:
     destination = _resolve(base, str(job["output"]))
     if source == destination:
         raise ValueError("输出路径不能覆盖产品原图")
+    from .image_evidence_gate_v13 import verify_job_evidence_gate
     evidence_gate_result = verify_job_evidence_gate(job, base)
     image, has_transparency = _source(source)
     if mode == "search_white" and not has_transparency and not _white_border(image):
