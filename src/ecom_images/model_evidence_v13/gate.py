@@ -66,6 +66,10 @@ def evaluate_content_gate(
         eligible = [claim for claim in attr_claims if claim["can_use_for_content"]]
         if not eligible:
             reasons.append(f"参数“{attribute_labels.get(attribute_key, attribute_key)}”没有满足来源、定位、独立复核和无冲突条件的 accepted 主张")
+            for claim in attr_claims:
+                for detail in claim.get("evidence_gate_reasons", []):
+                    if detail not in reasons:
+                        reasons.append(detail)
             continue
         eligible.sort(key=lambda item: (len(item["evidence"]), item["created_utc"]), reverse=True)
         claim = eligible[0]
