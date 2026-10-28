@@ -684,7 +684,7 @@ def _document_results(conn:sqlite3.Connection,tokens:list[str],model:str,limit:i
         location={"pdf_page":r[4],"printed_page":r[5] or None,"sheet_name":r[6] or None,
             "cell_range":r[7] or None,"line_start":r[8],"line_end":r[9],
             "heading_path":r[10] or None,"region":_obj(r[12])}
-        group=(r[1],r[4],r[6],r[10])
+        group=(r[1],r[4],r[6] or None,r[10] or None)
         if r[2] in _PRECISE_TYPES: precise.add(group)
         score=20+10*len(tokens)+(25 if model else 0)+(15 if r[2] in _PRECISE_TYPES else 0)
         if tokens and all(t.casefold() in text_value.casefold() for t in tokens): score+=10
