@@ -306,3 +306,16 @@ streamlit run app.py
 - 采集与覆盖状态说明：[DGDeler 全店采集工具](docs/supplier-research/dgdeler_full_catalog_capture.md)、[2026-10-28 采集审计](docs/supplier-research/collection_run_2026-10-28.md)。
 
 采集器会保存每页检查点，提取可见规格表、JSON-LD、图片与 SKU 选项；SQLite 会保存商品、每次价格/MOQ/销量观察、详情属性、SKU 选项、采集批次及错误历史。使用 scripts/sync_supplier_catalog_db.py 同步与导出。GitHub Actions 将数据库、CSV、JSON 检查点和审计报告上传为 30 天 artifact，不会把动态数据库二进制直接提交到公开仓库。云端自动采集已验证会遇到 Alibaba 登录/验证码限制；要完成全量数据，请在 Windows PowerShell 中运行 scripts/run_full_supplier_capture.ps1，在打开的可见浏览器里手动完成站点验证，再查看完整性审计。工具不会绕过访问控制。供应商页面字段始终标记为待核验观察值，不会自动变成已接受技术参数。
+
+
+## 阿里国际站店铺商品采集（V13）
+
+新增 scripts/crawl_alibaba_shop_v13.py，在网络可访问的情况下遍历店铺分类、列表、分页及商品详情页，将每个可访问的原始 HTML 页面通过现有 import_document() 接入 V13 知识库，保留 URL、抓取时间和 SHA-256。报告会列出型号/SKU、材质、尺寸、MOQ、价格、规格的原文候选与缺失项；不会自动接受参数主张。
+
+使用方式、已发现的分类入口、验证码限制和手动 HTML 导入方法见 [阿里国际站店铺采集说明](docs/alibaba-shop-crawl-v13.md)。
+
+运行测试：
+
+~~~bash
+python -m unittest discover -s tests -p "test_alibaba_shop_crawl_v13.py" -v
+~~~
