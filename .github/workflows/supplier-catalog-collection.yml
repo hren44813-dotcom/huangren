@@ -64,17 +64,17 @@ jobs:
         run: |
           python scripts/supplier_catalog_capture.py listing \
             --headless --no-prompt --refresh-existing \
-            --max-pages "${ inputs.max_pages || 139 }" \
-            --delay "${ inputs.delay_seconds || 2.5 }"
+            --max-pages "${{ inputs.max_pages || 139 }}" \
+            --delay "${{ inputs.delay_seconds || 2.5 }}"
 
       - name: Collect product details
-        if: ${ always() && (github.event_name == 'push' || inputs.collect_details) }
+        if: ${{ always() && (github.event_name == 'push' || inputs.collect_details) }}
         id: details
         continue-on-error: true
         run: |
           python scripts/supplier_catalog_capture.py details \
             --headless --no-prompt \
-            --delay "${ inputs.delay_seconds || 2.5 }" \
+            --delay "${{ inputs.delay_seconds || 2.5 }}" \
             --retries 2
 
       - name: Rebuild capture audits
@@ -100,7 +100,7 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: supplier-catalog-${ github.run_number }
+          name: supplier-catalog-${{ github.run_number }}
           path: |
             data/supplier_captures/dgdeler/
             .local/supplier_catalog.sqlite3
@@ -113,10 +113,10 @@ jobs:
       - name: Write collection summary
         if: always()
         env:
-          ARTIFACT_URL: ${ steps.artifact.outputs.artifact-url }
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
         run: |
           echo "## Supplier catalog collection" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Run: ${ github.server_url }/${ github.repository }/actions/runs/${ github.run_id }" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Artifact: $ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "- The database stores seller-page observations, not verified product specifications." >> "$GITHUB_STEP_SUMMARY"
 
