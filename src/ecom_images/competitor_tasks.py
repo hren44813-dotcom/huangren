@@ -24,11 +24,12 @@ def _encode_csv(fields, rows) -> bytes:
     writer = csv.DictWriter(stream, fieldnames=fields)
     writer.writeheader()
     for row in rows:
-        writer.writerow({
-            key: ("'" + str(value) if str(value).lstrip()[:1] in "=+-@" else value)
-            if value is not None else ""
-            for key, value in row.items()
-        })
+        safe = {}
+        for key, value in row.items():
+            text = "" if value is None else str(value)
+            prefix = text.lstrip()
+            safe[key] = "'" + text if prefix and prefix[0] in "=+-@" else text
+        writer.writerow(safe)
     return ("\ufeff" + stream.getvalue()).encode("utf-8")
 
 
