@@ -164,9 +164,15 @@ class ModelEvidenceReconciliationTests(unittest.TestCase):
             self.db, model_code="GL1-336", required_attributes=["Torque"],
         )
         self.assertFalse(result["allowed"])
-        self.assertTrue(any("原始文件" in reason for reason in result["reasons"]))
         claim = result["reconciliation"]["models"][0]["claims"][0]
-        self.assertFalse(claim["evidence"][0]["source_bytes_verified"])
+        self.assertFalse(
+            claim["evidence"][0]["source_bytes_verified"],
+            repr({"reasons": result["reasons"], "evidence": claim["evidence"][0]}),
+        )
+        self.assertTrue(
+            any("原始文件" in reason for reason in claim["evidence_gate_reasons"]),
+            repr({"reasons": result["reasons"], "gate_reasons": claim["evidence_gate_reasons"]}),
+        )
 
     def test_different_accepted_values_create_conflict_and_block_content(self):
         first = self.import_pdf("catalog-a.pdf", torque="6 N.m")
