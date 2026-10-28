@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from ecom_images.supplier_catalog_capture import (  # noqa: E402
     DEFAULT_URL, DETAIL_JS, is_challenge, product_fingerprint, save_listing_outputs,
-    scrape_listing_page,
+    scrape_listing_page, write_detail_exports,
 )
 
 DEFAULT_OUTPUT = ROOT / "data" / "supplier_captures" / "dgdeler"
@@ -37,6 +37,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     details.add_argument("--delay", type=float, default=3.0)
     details.add_argument("--limit", type=int, default=0, help="Optional maximum number of products; 0 means all.")
     details.add_argument("--save-html", action="store_true", help="Save detail page HTML locally for audit.")
+    audit = sub.add_parser("audit", help="Rebuild exports and report missing listing pages/details.")
+    audit.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     return parser.parse_args(argv)
 
 
@@ -167,8 +169,15 @@ def run_details(args: argparse.Namespace) -> int:
             item_id = item.get("item_id") or hashlib.sha256(item["product_url"].encode()).hexdigest()[:16]
             path = detail_dir / f"{item_id}.json"
             if path.exists():
-                print(f"[{index}/{len(items)}] 跳过已保存详情：{item.get('title', item_id)}")
-                continue
+                try:
+                    prior = json.loads(path.read_text(encoding="utf-8"))
+                    prior_text = detail_dir / f"{item_id}.txt"
+                    if isinstance(prior, dict) and isinstance(prior.get("detail_page"), dict) and prior_text.exists():
+                        print(f"[{index}/{len(items)}] 跳过已保存详情：{item.get('title', item_id)}")
+                        continue
+                    print(f"[{index}/{len(items)}] 详情记录不完整，将重新采集：{item.get('title', item_id)}")
+                except (OSError, json.JSONDecodeError):
+                    print(f"[{index}/{len(items)}] 详情 JSON 无法读取，将重新采集：{item.get('title', item_id)}")
             page.goto(item["product_url"], wait_until="domcontentloaded", timeout=90000)
             page.wait_for_timeout(1200)
             wait_for_manual_check(page, f"商品详情 {item.get('title', item_id)}")
@@ -190,6 +199,8 @@ def run_details(args: argparse.Namespace) -> int:
                 (detail_dir / f"{item_id}.html").write_text(page.content(), encoding="utf-8")
             print(f"[{index}/{len(items)}] 已保存详情：{item.get('title', item_id)}")
             page.wait_for_timeout(max(1.0, args.delay) * 1000)
+        detail_audit = write_detail_exports(args.output.resolve())
+        print(json.dumps(detail_audit, ensure_ascii=False, indent=2))
         print(f"详情采集结束。文件目录：{detail_dir}")
         return 0
     finally:
@@ -201,7 +212,18 @@ def main(argv: list[str] | None = None) -> int:
     """Run the requested capture mode and return a process exit code."""
     args = parse_args(argv)
     try:
-        return run_listing(args) if args.command == "listing" else run_details(args)
+        if args.command == "listing":
+            return run_listing(args)
+        if args.command == "details":
+            return run_details(args)
+        output = args.output.resolve()
+        pages_dir = output / "pages"
+        if not pages_dir.exists() or not list(pages_dir.glob("page_*.json")):
+            raise FileNotFoundError(f"未找到商品分页检查点：{pages_dir}；请先运行 listing 子命令。")
+        listing_summary = save_listing_outputs(output)
+        detail_summary = write_detail_exports(output)
+        print(json.dumps({"listing": listing_summary, "details": detail_summary}, ensure_ascii=False, indent=2))
+        return 0 if listing_summary.get("missing_page_count") == 0 and detail_summary.get("is_complete") else 2
     except KeyboardInterrupt:
         print("\n已中止；已保存的检查点会保留。", file=sys.stderr)
         return 130
