@@ -44,7 +44,18 @@ _CLAIM_SELECT = """SELECT
       (SELECT cm.model_code FROM catalog_sku_model_links l JOIN catalog_models cm ON cm.id=l.model_id
        WHERE c.subject_type='sku' AND l.sku_id=c.subject_id
        AND (SELECT ev.state FROM catalog_sku_model_events ev WHERE ev.link_id=l.id ORDER BY ev.event_id DESC LIMIT 1)='confirmed'
-       ORDER BY l.created_utc LIMIT 1),s.model,''),
+       ORDER BY l.created_utc LIMIT 1),''),
+    COALESCE(s.model,''),
+    CASE
+      WHEN c.subject_type='model' THEN 'manufacturer_model'
+      WHEN c.subject_type='sku' AND EXISTS(SELECT 1 FROM catalog_sku_model_links l
+        WHERE l.sku_id=c.subject_id
+        AND (SELECT ev.state FROM catalog_sku_model_events ev WHERE ev.link_id=l.id ORDER BY ev.event_id DESC LIMIT 1)='confirmed')
+        THEN 'confirmed_sku_model_mapping'
+      WHEN c.subject_type='sku' AND COALESCE(s.model,'')<>'' THEN 'sku_free_text_unverified'
+      WHEN c.subject_type='sku' THEN 'no_model_text'
+      ELSE 'not_applicable'
+    END,
     COALESCE(s.code,''),COALESCE(p.name,''),COALESCE(p.category,''),COALESCE(st.name,''),
     (SELECT COUNT(*) FROM knowledge_claim_evidence ev WHERE ev.claim_id=c.id),
     (SELECT COUNT(*) FROM knowledge_claim_reviews rv WHERE rv.claim_id=c.id),
@@ -61,7 +72,7 @@ _CLAIM_SELECT = """SELECT
 _CLAIM_KEYS = (
     "claim_id", "subject_type", "subject_id", "attribute", "literal_value", "unit", "claim_kind",
     "normalized_value_json", "created_by", "created_utc", "supersedes_claim_id", "state", "model_code",
-    "sku_code", "product_name", "category", "store_name", "evidence_count", "review_count",
+    "sku_model_text", "model_binding_status", "sku_code", "product_name", "category", "store_name", "evidence_count", "review_count",
     "latest_review_verdict", "latest_reviewer", "latest_reviewed_utc",
 )
 
@@ -190,13 +201,13 @@ def list_open_conflicts(
         COALESCE(am.model_code,(SELECT cm.model_code FROM catalog_sku_model_links l JOIN catalog_models cm ON cm.id=l.model_id
           WHERE a.subject_type='sku' AND l.sku_id=a.subject_id
           AND (SELECT ev.state FROM catalog_sku_model_events ev WHERE ev.link_id=l.id ORDER BY ev.event_id DESC LIMIT 1)='confirmed'
-          ORDER BY l.created_utc LIMIT 1),sa.model,''),
+          ORDER BY l.created_utc LIMIT 1),''),
         b.id,b.subject_type,b.subject_id,b.attribute,b.literal_value,b.unit,b.claim_kind,
         COALESCE((SELECT e.state FROM knowledge_claim_events e WHERE e.claim_id=b.id ORDER BY e.event_id DESC LIMIT 1),'unknown'),
         COALESCE(bm.model_code,(SELECT cm.model_code FROM catalog_sku_model_links l JOIN catalog_models cm ON cm.id=l.model_id
           WHERE b.subject_type='sku' AND l.sku_id=b.subject_id
           AND (SELECT ev.state FROM catalog_sku_model_events ev WHERE ev.link_id=l.id ORDER BY ev.event_id DESC LIMIT 1)='confirmed'
-          ORDER BY l.created_utc LIMIT 1),sb.model,'')
+          ORDER BY l.created_utc LIMIT 1),'')
         FROM knowledge_conflicts cf
         JOIN knowledge_claims a ON a.id=cf.claim_a_id
         JOIN knowledge_claims b ON b.id=cf.claim_b_id
