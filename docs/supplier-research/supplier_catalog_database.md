@@ -35,9 +35,9 @@ python scripts/seed_supplier_capture.py
 
 For a full visible-browser run on Windows, run the PowerShell orchestrator below. It preserves checkpoints, allows manual login/CAPTCHA handling in the visible browser, retries ordinary page errors, syncs the database, exports CSVs and returns a non-zero exit code if completeness checks fail. To install dependencies first, add -InstallDependencies:
 
-@B@powershell
+`powershell
 .\scripts\run_full_supplier_capture.ps1 -InstallDependencies
-@B@
+`
 
 After the one-time install, rerun without the switch. The lower-level commands are also available; refresh existing checkpoints when the goal is to capture new price observations:
 
