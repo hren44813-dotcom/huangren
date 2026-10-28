@@ -119,7 +119,6 @@ if (Test-Path $MarkdownDir) {
 if ($knowledgeCode -eq 2) {
     Write-Host "No detail Markdown documents available to index in V13." -ForegroundColor Yellow
 }
-)
 
 Write-Host ""
 Write-Host "===== Output locations =====" -ForegroundColor Cyan
