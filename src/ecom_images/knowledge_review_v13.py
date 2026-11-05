@@ -382,6 +382,8 @@ def render_segment_preview(
                 raise ValueError("索引中的 PDF 页码超出原始文件范围")
             page = document[page_index]
             rect = page.rect
+            # Text extraction and drawing use unrotated, crop-relative coordinates.
+            unrotated_rect = rect * page.derotation_matrix
             bbox = region.get("bbox")
             highlighted = False
             normalized_bbox = None
@@ -391,14 +393,21 @@ def render_segment_preview(
                 except (TypeError, ValueError, OverflowError):
                     coords = []
                 if len(coords) == 4 and all(math.isfinite(v) for v in coords):
-                    target = fitz.Rect(coords) & rect
+                    target = fitz.Rect(coords) & unrotated_rect
                     if target.is_valid and not target.is_empty and target.width > 0 and target.height > 0:
-                        page.draw_rect(target, color=(1, 0, 0), width=2, overlay=True)
+                        # Avoid rotated CropBox offsets in PyMuPDF's drawing transform.
+                        rotation = page.rotation
+                        try:
+                            page.set_rotation(0)
+                            page.draw_rect(target, color=(1, 0, 0), width=2, overlay=True)
+                        finally:
+                            page.set_rotation(rotation)
                         highlighted = True
-                        normalized_bbox = [round(target.x0 / max(rect.width, 1), 6),
-                            round(target.y0 / max(rect.height, 1), 6),
-                            round(target.x1 / max(rect.width, 1), 6),
-                            round(target.y1 / max(rect.height, 1), 6)]
+                        displayed = target * page.rotation_matrix
+                        normalized_bbox = [round((displayed.x0 - rect.x0) / max(rect.width, 1), 6),
+                            round((displayed.y0 - rect.y0) / max(rect.height, 1), 6),
+                            round((displayed.x1 - rect.x0) / max(rect.width, 1), 6),
+                            round((displayed.y1 - rect.y0) / max(rect.height, 1), 6)]
             pixmap = page.get_pixmap(matrix=fitz.Matrix(float(scale), float(scale)), alpha=False)
             png = pixmap.tobytes("png")
             return {
@@ -426,7 +435,7 @@ def record_claim_review(
         raise ValueError("参数主张状态无效")
     reviewer_name = _text(reviewer_name, "审核人", 100)
     method = _text(method, "复核方法", 300)
-    notes = _text(notes, "复核说明", 1000)
+    notes = _text(notes, "复核说明", 1000, multiline=True)
     if decision_state:
         actor = _text(actor, "状态操作人", 100)
         decision_note = _text(decision_note, "状态说明", 500, empty=decision_state == "accepted")

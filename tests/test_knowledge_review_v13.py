@@ -1,16 +1,17 @@
 from __future__ import annotations
-import csv,hashlib,io,sqlite3,sys,tempfile,unittest
+import csv,hashlib,io,json,sqlite3,sys,tempfile,unittest
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"src"))
 import fitz
+from PIL import Image
 from ecom_images.catalog_v12 import COLUMNS,import_catalog_csv
 from ecom_images.database_v9 import open_database,save_job
 from ecom_images.production_ledger_v6 import new_record
 from ecom_images.knowledge_schema_v13 import initialize_knowledge
 from ecom_images.knowledge_v13 import add_model
-from ecom_images.knowledge_claims_v13 import create_claim,create_conflict,transition_conflict
+from ecom_images.knowledge_claims_v13 import add_claim_review,create_claim,create_conflict,transition_conflict
 from ecom_images.knowledge_ingest_v13 import import_document,initialize_ingestion,search_knowledge
 from ecom_images.knowledge_review_v13 import (
     create_claim_from_segment,get_claim_review_detail,list_open_conflicts,list_review_claims,
@@ -89,6 +90,90 @@ class KnowledgeReviewV13Tests(unittest.TestCase):
         stored=self.root/imported["storage_relpath"]; stored.write_bytes(stored.read_bytes()+b"tamper")
         with self.assertRaisesRegex(ValueError,"SHA-256"):
             render_segment_preview(self.db,segment_id=seg["segment_id"])
+
+    def test_pdf_highlights_follow_rendered_rotation_and_crop(self):
+        path = self.inputs / "rotated.pdf"
+        with fitz.open() as document:
+            for rotation in (0, 90, 180, 270):
+                page = document.new_page(width=240, height=460)
+                page.insert_text((60, 380), "GL1-336 torque 6 N.m")
+                page.set_cropbox(fitz.Rect(20, 30, 220, 430))
+                page.set_rotation(rotation)
+            document.save(path)
+        import_document(self.db, file_path=path, source_kind="manufacturer_document")
+        with open_database(self.db) as conn:
+            segments = conn.execute("SELECT id,segment_type,pdf_page,region_json FROM knowledge_document_segments ORDER BY ordinal").fetchall()
+        self.assertEqual(len(segments), 8)  # A page and line segment for each rotation.
+        for segment_id, kind, page_number, region_json in segments:
+            rotation = (page_number - 1) * 90
+            with self.subTest(rotation=rotation, kind=kind):
+                x0, y0, x1, y1 = json.loads(region_json)["bbox"]
+                # Hand-derived display coordinates for a 200 x 400 cropped page.
+                expected = {
+                    0: [x0 / 200, y0 / 400, x1 / 200, y1 / 400],
+                    90: [(400-y1) / 400, x0 / 200, (400-y0) / 400, x1 / 200],
+                    180: [(200-x1) / 200, (400-y1) / 400, (200-x0) / 200, (400-y0) / 400],
+                    270: [y0 / 400, (200-x1) / 200, y1 / 400, (200-x0) / 200],
+                }[rotation]
+                preview = render_segment_preview(self.db, segment_id=segment_id, scale=1)
+                self.assertTrue(preview["highlighted"])
+                for actual, wanted in zip(preview["normalized_bbox"], expected):
+                    self.assertAlmostEqual(actual, wanted, places=6)
+                with Image.open(io.BytesIO(preview["png"])) as image:
+                    self.assertEqual(list(image.size), preview["page_size"])
+                    red_pixels = [(x, y) for y in range(image.height) for x in range(image.width)
+                                  if (lambda rgb: rgb[0] > 200 and rgb[1] < 80 and rgb[2] < 80)(image.getpixel((x, y)))]
+                    self.assertTrue(red_pixels, "the preview must actually draw the highlight")
+                    red_bounds = [min(x for x, y in red_pixels), min(y for x, y in red_pixels),
+                                  max(x for x, y in red_pixels), max(y for x, y in red_pixels)]
+                    for actual, wanted, dimension in zip(red_bounds, expected, image.size * 2):
+                        self.assertAlmostEqual(actual, wanted * dimension, delta=2)
+
+    def test_review_explanations_preserve_multiline_text(self):
+        _, result = self.create_from_pdf()
+        for review in (record_claim_review, add_claim_review):
+            with self.subTest(service=review.__name__):
+                review(self.db, claim_id=result["claim_id"], verdict="inconclusive", reviewer_role="other",
+                       reviewer_name="审核人", method="对照原文", notes=" 第一段\r\n第二段\r第三段\n\n第四段 ")
+        reviews = get_claim_review_detail(self.db, claim_id=result["claim_id"])["reviews"]
+        self.assertEqual(len(reviews), 2)
+        for review in reviews:
+            self.assertEqual(review["notes"], "第一段\n第二段\n第三段\n\n第四段")
+
+    def test_review_explanations_keep_validation_and_atomicity(self):
+        _, result = self.create_from_pdf()
+        for review in (record_claim_review, add_claim_review):
+            for bad in ("\n\r\n", "a" * 1001, "a" * 500 + "\n" + "b" * 500, "正文\x00后文", "正文\t后文", "正文\x1b后文"):
+                with self.subTest(service=review.__name__, bad=repr(bad[:20])):
+                    with self.assertRaises(ValueError):
+                        review(self.db, claim_id=result["claim_id"], verdict="inconclusive", reviewer_role="other",
+                               reviewer_name="审核人", method="对照原文", notes=bad)
+            with self.assertRaises(ValueError):
+                review(self.db, claim_id=result["claim_id"], verdict="inconclusive", reviewer_role="other",
+                       reviewer_name="审核人\n第二行", method="对照原文", notes="有效说明")
+        detail = get_claim_review_detail(self.db, claim_id=result["claim_id"])
+        self.assertEqual(detail["reviews"], [])
+        self.assertEqual(detail["claim"]["state"], "proposed")
+
+    def test_conflict_resolution_preserves_multiline_text_and_validation(self):
+        imported = self.import_pdf()
+        claims = [create_claim(self.db, subject_type="model", subject_id=self.model_id, attribute="扭矩",
+                               literal_value=value, unit="N.m", claim_kind="catalog_transcription", created_by="运营")
+                  for value in ("6", "7")]
+        conflict = create_conflict(self.db, claim_a_id=claims[0], claim_b_id=claims[1], created_by="运营", description="资料冲突")
+        for bad in ("\n\r\n", "a" * 1001, "a" * 500 + "\n" + "b" * 500, "正文\x00后文", "正文\t后文", "正文\x1b后文"):
+            with self.subTest(bad=repr(bad[:20])):
+                with self.assertRaises(ValueError):
+                    transition_conflict(self.db, conflict_id=conflict, state="resolved", actor="审核人",
+                                        resolution_note=bad, source_id=imported["source_id"])
+        self.assertEqual(list_open_conflicts(self.db)[0]["state"], "open")
+        transition_conflict(self.db, conflict_id=conflict, state="resolved", actor="审核人",
+                            resolution_note=" 第一段\r\n第二段\r第三段\n\n第四段 ", source_id=imported["source_id"])
+        with open_database(self.db) as conn:
+            events = conn.execute("SELECT state,resolution_note,source_id FROM knowledge_conflict_events WHERE conflict_id=? ORDER BY event_id", (conflict,)).fetchall()
+        self.assertEqual(len(events), 2)
+        self.assertEqual(tuple(events[-1]), ("resolved", "第一段\n第二段\n第三段\n\n第四段", imported["source_id"]))
+        self.assertEqual(list_open_conflicts(self.db), [])
     def test_acceptance_and_review_are_atomic_and_require_independent_reviewer(self):
         _,result=self.create_from_pdf(); claim_id=result["claim_id"]
         with self.assertRaisesRegex(ValueError,"independent supporting review"):

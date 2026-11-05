@@ -22,11 +22,12 @@ def _id() -> str:
     return uuid.uuid4().hex
 
 
-def _text(value: str,label: str,limit: int=500,*,empty: bool=False) -> str:
-    """Validate bounded text and reject control characters."""
+def _text(value: str,label: str,limit: int=500,*,empty: bool=False,multiline: bool=False) -> str:
+    """Validate bounded text; explanation fields may opt into normalized newlines."""
     if not isinstance(value,str): raise ValueError(f"{label}必须是文本")
+    if multiline: value=value.replace("\r\n","\n").replace("\r","\n")
     cleaned=value.strip()
-    if (not empty and not cleaned) or len(cleaned)>limit or any(ord(c)<32 for c in cleaned):
+    if (not empty and not cleaned) or len(cleaned)>limit or any(ord(c)<32 and not (multiline and c=="\n") for c in cleaned):
         raise ValueError(f"{label}为空、包含控制字符或超过{limit}字")
     return cleaned
 
