@@ -88,7 +88,7 @@ def add_claim_review(path: str|Path=DEFAULT_DB,*,claim_id: str,verdict: str,revi
     if verdict not in {"supports","contradicts","inconclusive"}: raise ValueError("复核结论无效")
     if reviewer_role not in {"author","second_reviewer","manufacturer","independent_lab","warehouse","other"}:
         raise ValueError("复核人员类型无效")
-    reviewer_name=_text(reviewer_name,"审核人",100); method=_text(method,"复核方法",300); notes=_text(notes,"复核说明",1000)
+    reviewer_name=_text(reviewer_name,"审核人",100); method=_text(method,"复核方法",300); notes=_text(notes,"复核说明",1000,multiline=True)
     with open_database(path) as conn:
         _validate_catalog(conn); validate_knowledge(conn)
         if not conn.execute("SELECT 1 FROM knowledge_claims WHERE id=?",(claim_id,)).fetchone(): raise ValueError("参数主张不存在")
@@ -148,7 +148,7 @@ def transition_conflict(path: str|Path=DEFAULT_DB,*,conflict_id: str,state: str,
     resolution_note: str="",source_id: str|None=None) -> None:
     """Append a conflict resolution; resolving needs a source and written rationale."""
     if state not in {"resolved","reopened"}: raise ValueError("冲突状态只能为resolved或reopened")
-    actor=_text(actor,"操作人",100); resolution_note=_text(resolution_note,"处理说明",1000,empty=state=="reopened")
+    actor=_text(actor,"操作人",100); resolution_note=_text(resolution_note,"处理说明",1000,empty=state=="reopened",multiline=True)
     with open_database(path) as conn:
         _validate_catalog(conn); validate_knowledge(conn)
         if not conn.execute("SELECT 1 FROM knowledge_conflicts WHERE id=?",(conflict_id,)).fetchone(): raise ValueError("冲突记录不存在")

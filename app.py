@@ -19,6 +19,8 @@ from ecom_images.main_direction_ui import render as render_main_directions  # no
 from ecom_images.sku_batch_ui import render as render_sku_batch  # noqa: E402
 from ecom_images.db_reporting_ui_v11 import render as render_db_reporting  # noqa: E402
 from ecom_images.catalog_ui_v12 import render as render_catalog_v12  # noqa: E402
+from ecom_images.knowledge_review_ui_v13 import render as render_knowledge_review  # noqa: E402
+from ecom_images.competitor_monitor_ui import render as render_competitor_monitor  # noqa: E402
 from ecom_images.workflow import (  # noqa: E402
     UploadedPicture, planned_count, produce_images,
 )
@@ -31,12 +33,29 @@ st.info("标准制图在当前运行环境离线完成，不会将商品照片�
 platform = st.selectbox("目标平台", ["淘宝 / 天猫", "阿里国际站"])
 st.caption("平台选择用于区分工作流程；预设尺寸是制图模板，不代表平台实时审核规则。发布前请核对各平台最新要求。")
 
-direction_tab, standard, sku_tab, ai_tab, db_tab, catalog_tab = st.tabs(["① 主图方向策划", "② 标准主图 / SKU 批量制作", "③ Excel SKU / V6 制图审核流程", "④ 星河 AI 详情页（可选）", "⑤ 数据库运营查询（只读）", "⑥ 商品 / SKU 档案"])
+WORKSPACES = {
+    "素材制作": [
+        "主图方向策划", "标准主图 / SKU 批量制作",
+        "Excel SKU / V6 制图审核流程", "星河 AI 详情页（可选）",
+    ],
+    "产品资料": [
+        "数据库运营查询（只读）", "商品 / SKU 档案", "参数证据审核",
+    ],
+    "竞品监测": ["竞品 SKU 每日监测"],
+}
+with st.sidebar:
+    st.markdown("### 工作区")
+    workspace = st.radio("选择工作区", list(WORKSPACES), key="main_workspace")
+    page = st.selectbox("当前功能", WORKSPACES[workspace], key=f"main_page_{workspace}")
+    st.divider()
+    st.caption("左侧先选工作区，再选择要做的事。每次只显示一个功能，减少页面拥挤。")
 
-with direction_tab:
+st.caption(f"当前工作区：{workspace}  /  当前功能：{page}")
+
+if page == "主图方向策划":
     render_main_directions(st, platform)
 
-with standard:
+if page == "标准主图 / SKU 批量制作":
     uploaded = st.file_uploader("上传产品原图（可多选，建议透明 PNG）", type=["png", "jpg", "jpeg", "webp"],
                                 accept_multiple_files=True, key="standard_upload")
     st.caption("每张最多 12 MB，每批最多 25 张。只做等比例排版，不自动抠图、不修复结构。")
@@ -136,16 +155,22 @@ with standard:
                         st.download_button("下载这张", data=data, file_name=Path(name).name,
                                            mime="image/jpeg", key=f"download_{name}")
 
-with sku_tab:
+if page == "Excel SKU / V6 制图审核流程":
     render_sku_batch(st, platform)
 
-with db_tab:
+if page == "数据库运营查询（只读）":
     render_db_reporting(st)
 
-with catalog_tab:
+if page == "商品 / SKU 档案":
     render_catalog_v12(st)
 
-with ai_tab:
+if page == "参数证据审核":
+    render_knowledge_review(st)
+
+if page == "竞品 SKU 每日监测":
+    render_competitor_monitor(st)
+
+if page == "星河 AI 详情页（可选）":
     st.warning("该功能通过仓库内的星河技能脚本调用第三方 API，会上传你选择的产品图和提示词，可能产生费用；并非离线功能。AI 生成的产品结构、尺寸和文案必须人工复核。")
     ai_photo = st.file_uploader("AI 参考产品图（单张）", type=["png", "jpg", "jpeg", "webp"], key="ai_upload")
     ai_name = st.text_input("产品名称", key="ai_name", placeholder="例如 MS705 转舌锁")

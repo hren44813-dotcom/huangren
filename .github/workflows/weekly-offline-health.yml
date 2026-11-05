@@ -1,0 +1,48 @@
+name: Weekly offline automation health
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install offline dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Recreate public committed baseline without network access
+        run: python scripts/seed_supplier_capture.py
+      - name: Verify baseline and persist normalized supplier data
+        run: |
+          python scripts/sync_supplier_catalog_db.py sync --require-details
+          python scripts/sync_supplier_catalog_db.py audit
+      - name: Check V13, SQLite and honest supplier coverage
+        run: |
+          python scripts/system_healthcheck.py \
+            --capture-dir data/supplier_captures/dgdeler \
+            --report data/supplier_captures/dgdeler/system_health_report.json
+          python scripts/verify_supplier_pipeline.py \
+            --capture-dir data/supplier_captures/dgdeler \
+            --require-details --expect-status partial \
+            --report data/supplier_captures/dgdeler/independent_validation.json
+      - name: Upload evidence of automated checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-offline-health
+          path: |
+            data/supplier_captures/dgdeler/system_health_report.json
+            data/supplier_captures/dgdeler/independent_validation.json
+            data/supplier_captures/dgdeler/exports/
+          retention-days: 14
+          if-no-files-found: warn

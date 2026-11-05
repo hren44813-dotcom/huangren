@@ -1,0 +1,216 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "dgdeler_cross_source_verification_2026-10-28",
+  "captured_at": "2026-10-28",
+  "scope": "Cross-source supplement from supplier profile and supplier-owned website pages; product-level technical specifications remain unverified.",
+  "sources": [
+    {
+      "url": "https://dgdeler.en.alibaba.com/",
+      "source_role": "Alibaba supplier profile",
+      "raw_html_saved": false
+    },
+    {
+      "url": "https://www.dg-deler.com/",
+      "source_role": "Supplier-owned website homepage",
+      "raw_html_saved": false
+    },
+    {
+      "url": "https://www.dg-deler.com/aboutus/",
+      "source_role": "Supplier-owned website About Us",
+      "raw_html_saved": false
+    },
+    {
+      "url": "https://www.dg-deler.com/Handle/",
+      "source_role": "Supplier-owned website handle category",
+      "raw_html_saved": false
+    },
+    {
+      "url": "https://www.dg-deler.com/Limit-Stop/",
+      "source_role": "Supplier-owned website limit stop category",
+      "raw_html_saved": false
+    },
+    {
+      "url": "https://www.dg-deler.com/best-heavy-duty-industrial-hinge.html",
+      "source_role": "Supplier-owned website recommendation article",
+      "raw_html_saved": false
+    }
+  ],
+  "identity": {
+    "company_name_variants": [
+      {
+        "value": "Dongguan Dele Hardware Technology Co., Ltd.",
+        "source_url": "https://dgdeler.en.alibaba.com/",
+        "status": "observed_on_page"
+      },
+      {
+        "value": "Dongguan Dele Hardware Technology Co., Ltd.",
+        "source_url": "https://www.dg-deler.com/",
+        "status": "observed_on_page"
+      },
+      {
+        "value": "Dongguan Dele Hardware Products Co., Ltd.",
+        "source_url": "https://www.dg-deler.com/aboutus/",
+        "status": "observed_on_page"
+      }
+    ],
+    "legal_entity_resolution": "unresolved_supplier_confirmation_required"
+  },
+  "claims_requiring_reconciliation": [
+    {
+      "field": "staff_count",
+      "observations": [
+        {
+          "value": "46",
+          "source_url": "https://dgdeler.en.alibaba.com/",
+          "source_text": "Total staff (46)"
+        },
+        {
+          "value": "over 50 people",
+          "source_url": "https://www.dg-deler.com/",
+          "source_text": "a team of over 50 people"
+        },
+        {
+          "value": "200+ Skilled Employees",
+          "source_url": "https://www.dg-deler.com/aboutus/",
+          "source_text": "200+ Skilled Employees"
+        }
+      ],
+      "status": "inconsistent_public_claims",
+      "next_action": "Ask for the current employee count and clarify whether it refers to the legal entity, production site, or wider group."
+    },
+    {
+      "field": "factory_area",
+      "observations": [
+        {
+          "value": "8000 square meters",
+          "source_url": "https://www.dg-deler.com/",
+          "source_text": "The factory covers an area of 8000 square meters"
+        },
+        {
+          "value": "6000 m²",
+          "source_url": "https://www.dg-deler.com/aboutus/",
+          "source_text": "6000 m² Factory Area"
+        }
+      ],
+      "status": "inconsistent_public_claims",
+      "next_action": "Ask the supplier to confirm the current usable factory area and whether the figures refer to different sites."
+    },
+    {
+      "field": "experience_years",
+      "observations": [
+        {
+          "value": "established in 2020",
+          "source_url": "https://www.dg-deler.com/",
+          "source_text": "established in 2020"
+        },
+        {
+          "value": "20+ Production Experience",
+          "source_url": "https://www.dg-deler.com/aboutus/",
+          "source_text": "20+ Production Experience"
+        }
+      ],
+      "status": "ambiguous_claims",
+      "next_action": "Clarify whether 20+ years refers to team experience, predecessor operations, or the company itself."
+    },
+    {
+      "field": "quality_certification",
+      "observations": [
+        {
+          "value": "ISO 9001",
+          "source_url": "https://www.dg-deler.com/",
+          "source_text": "It has passed ISO 9001 certification"
+        },
+        {
+          "value": "TÜV Rheinland branding/text visible",
+          "source_url": "https://dgdeler.en.alibaba.com/",
+          "source_text": "TÜV Rheinland branding/text visible on page"
+        }
+      ],
+      "status": "self_claim_or_branding_not_independently_verified",
+      "next_action": "Request certificate copy, number, issuing body, legal holder, scope, covered product/site, and expiry date."
+    }
+  ],
+  "product_model_strings": {
+    "handle_category": {
+      "source_url": "https://www.dg-deler.com/Handle/",
+      "models": [
+        "HC-XAG61/62/66",
+        "HC-XAG51/52",
+        "HC-XAG91",
+        "HC-XAG42",
+        "HC-XAG22/23/24",
+        "HC-XAG11 (LS516)",
+        "HC-XAE33/34",
+        "HC-XAE11/12",
+        "HC-XAC26/27/29"
+      ],
+      "status": "model_strings_only_no_product_specifications_verified"
+    },
+    "limit_stop_category": {
+      "source_url": "https://www.dg-deler.com/Limit-Stop/",
+      "models": [
+        "HC-HFX45",
+        "HC-HFX26",
+        "HC-HFX03",
+        "HC-TX92-2",
+        "HC-TX90-3",
+        "HC-TX90-2",
+        "HC-TX90-1",
+        "HC-TX80-2",
+        "HC-TX80-1"
+      ],
+      "status": "model_strings_only_no_product_specifications_verified"
+    },
+    "homepage_recommendations": {
+      "source_url": "https://www.dg-deler.com/best-heavy-duty-industrial-hinge.html",
+      "industrial_cabinet_lock": [
+        "HC-RV-A-240-3",
+        "HC-MS888",
+        "HC-MS861",
+        "HC-MS819"
+      ],
+      "heavy_duty_industrial_hinge": [
+        "HC-013-1",
+        "HC-076A",
+        "HC-076",
+        "HC-059A"
+      ],
+      "status": "recommended_product_labels_not_verified_sales_ranking"
+    }
+  },
+  "public_contact_as_displayed": {
+    "source_url": "https://www.dg-deler.com/aboutus/",
+    "contact_name": "Mr. Fan",
+    "phone_whatsapp_wechat": [
+      "13725774420",
+      "13790201096"
+    ],
+    "email": "112741218@qq.com",
+    "address": "Building 1, No. 110 Dayuan Road, Zhangcun, Dongcheng Street, Dongguan City, Guangdong Province",
+    "status": "public_website_listing_not_independently_verified"
+  },
+  "category_level_handle_information": {
+    "source_url": "https://www.dg-deler.com/Handle/",
+    "types": [
+      "embedded handles",
+      "pull-style handles",
+      "folding handles",
+      "tubular handles",
+      "knob-style handles",
+      "door handles"
+    ],
+    "materials_mentioned": [
+      "stainless steel",
+      "zinc alloy",
+      "aluminum alloy",
+      "PA6/ABS plastic"
+    ],
+    "status": "general_category_description_not_specific_to_each_model"
+  },
+  "v13_ingestion_recommendation": {
+    "source_kind": "other",
+    "authority_level": "unverified",
+    "do_not_auto_accept_parameters": true,
+    "do_not_auto_resolve_company_identity": true
+  }
+}
