@@ -28,10 +28,33 @@ class MeasurementGateTests(unittest.TestCase):
         self.assertFalse(_contains_value("6 mN.m", "6", "MN.m"))
 
     def test_conflict_unit_keys_keep_si_magnitude(self):
-        self.assertNotEqual(_unit_key("MN.m"), _unit_key("mN.m"))
-        self.assertNotEqual(_value_key({"normalized_value_json": "6", "unit": "MN.m"}),
-                            _value_key({"normalized_value_json": "6", "unit": "mN.m"}))
-        self.assertEqual(_unit_key("N·m"), _unit_key("N.m"))
+        for first, second in (("MN.m", "mN.m"), ("N", "n"), ("kg", "g")):
+            with self.subTest(first=first, second=second):
+                self.assertNotEqual(_unit_key(first), _unit_key(second))
+                self.assertNotEqual(_value_key({"normalized_value_json": "6", "unit": first}),
+                                    _value_key({"normalized_value_json": "6", "unit": second}))
+        for equivalent in ("N·m", "N⋅m", " N . m "):
+            with self.subTest(equivalent=equivalent):
+                self.assertEqual(_unit_key(equivalent), _unit_key("N.m"))
+
+    def test_value_and_unit_must_not_be_substrings_of_larger_tokens(self):
+        for wrong in ("X6 N.m", "1E6 N.m", "1E+6 N.m", "1e+6 N.m", "6 N.mX", "6 N.mK", "6 N.m2",
+                      "16 N.m", "0.6 N.m", "-6 N.m", "6 N.mm"):
+            with self.subTest(wrong=wrong):
+                self.assertFalse(_contains_value(wrong, "6", "N.m"))
+
+    def test_si_unit_case_and_magnitude_pairs_are_not_interchangeable(self):
+        for actual, approved in (("MN.m", "mN.m"), ("mN.m", "MN.m"),
+                                 ("N", "n"), ("n", "N"), ("kg", "g"), ("g", "kg")):
+            with self.subTest(actual=actual, approved=approved):
+                self.assertFalse(_contains_value(f"6 {actual}", "6", approved))
+
+    def test_explicit_unit_equivalents_and_delimited_values_remain_accepted(self):
+        for text in ("6N.m", "Rated torque (6 N.m)", "扭矩6N.m",
+                     "6.0 N·m", "6 N⋅m", "6 N · m", "６ Ｎ．ｍ"):
+            with self.subTest(text=text):
+                self.assertTrue(_contains_value(text, "6", "N.m"))
+        self.assertTrue(_contains_value("MATERIAL: STEEL", "steel", ""))
 
 
 class PriceChronologyTests(unittest.TestCase):
