@@ -44,8 +44,11 @@ def _contains_value(field_text: str, value: str, unit: str) -> bool:
         token = re.escape(rendered) + r"(?:\.0+)?"
     else:
         token = re.escape(needle)
-    left = r"(?<![a-z0-9_.\-])"
-    right = r"(?![a-z0-9_.\-])"
+    # Unit-bearing text keeps its case, so token boundaries must also exclude
+    # uppercase letters. A leading plus also prevents matching an exponent's
+    # digits in 1E+6; X6, 1E6 and N.mX are not standalone measurements either.
+    left = r"(?<![a-zA-Z0-9_.+\-])"
+    right = r"(?![a-zA-Z0-9_.\-])"
     unit_key = re.sub(r"\s+", "", _norm_text(unit, preserve_case=True))
     if not unit_key:
         return re.search(left + token + right, haystack) is not None
