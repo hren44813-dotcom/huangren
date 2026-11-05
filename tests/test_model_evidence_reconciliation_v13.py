@@ -249,6 +249,27 @@ class ModelEvidenceReconciliationTests(unittest.TestCase):
         self.assertEqual(result["evidence_gate"]["status"], "approved")
         self.assertEqual(result["evidence_gate"]["bindings"][0]["literal_value"], "6")
 
+    def test_image_rendering_rejects_measurement_substrings_before_writing(self):
+        imported = self.import_pdf()
+        self.accepted_claim(imported, "6")
+        source = self.root / "product.png"
+        Image.new("RGB", (240, 240), "white").save(source)
+        for index, title in enumerate(("Rated torque X6 N.m", "Rated torque 1E6 N.m", "Rated torque 1E+6 N.m",
+                                       "Rated torque 6 N.mX")):
+            with self.subTest(title=title):
+                output = self.root / f"rejected-{index}.png"
+                job = {
+                    "mode": "main", "source": str(source), "output": str(output),
+                    "title": title,
+                    "evidence_gate": {
+                        "database": str(self.db), "model_code": "GL1-336",
+                        "bindings": [{"field": "title", "attribute": "Torque"}],
+                    },
+                }
+                with self.assertRaisesRegex(ValueError, "与已审核参数不一致"):
+                    build_job(job, self.root)
+                self.assertFalse(output.exists())
+
     def test_sku_spec_binding_requires_label_to_match_claim_attribute(self):
         imported = self.import_pdf()
         self.accepted_claim(imported, "6")
